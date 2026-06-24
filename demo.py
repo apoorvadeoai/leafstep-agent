@@ -12,299 +12,192 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Demo script running a LeafStep Agent scenario.
+"""LeafStep Agent – Local No-LLM Demo.
 
-This script executes one Oakville household scenario using LeafStep Agent.
-If no Google Cloud credentials or Gemini API key are found in the environment,
-it automatically injects a mock model callback to simulate the ReAct tool-use loop
-and print the resulting green space report successfully.
+Runs all five LeafStep tools directly (no Gemini / no ADK Runner) and prints
+a fully-formatted green space report for an Oakville household scenario.
+
+Usage:
+    python demo.py
+
+The ADK project structure (app/agent.py, app/tools.py, etc.) remains intact
+and is unaffected by this demo mode.
 """
 
-import asyncio
-import os
+import importlib.util
 import sys
+import os
 
-# Ensure the root leafstep-agent directory is in python path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# ── Import tools directly from the source file ──────────────────────────────
+# We load tools.py directly rather than via the `app` package so that
+# app/__init__.py (which imports agent.py → google.adk) is never triggered.
+# This keeps the demo completely dependency-free (no ADK, no Gemini).
+_tools_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app", "tools.py")
+_spec = importlib.util.spec_from_file_location("app.tools", _tools_path)
+_tools = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_tools)
 
-import google.auth
-from google.adk.models.llm_response import LlmResponse
-from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
-from google.genai import types
+space_intake_tool = _tools.space_intake_tool
+plant_recommendation_tool = _tools.plant_recommendation_tool
+soil_stewardship_tool = _tools.soil_stewardship_tool
+care_plan_tool = _tools.care_plan_tool
+sustainability_guardrail_tool = _tools.sustainability_guardrail_tool
 
-from app.agent import root_agent
+# ─────────────────────────────────────────────
+# Scenario: Oakville household, Day 1 prototype
+# ─────────────────────────────────────────────
+SCENARIO = {
+    "location": "Oakville, Ontario",
+    "dimensions": "3x5 backyard patch",
+    "sunlight": "full sun",
+    "experience_level": "beginner",
+    "wants_indoor_support": True,
+}
 
 
-async def mock_llm_callback(callback_context, llm_request) -> LlmResponse | None:
-    """Interceptors to simulate the model tool call loop when running offline."""
-    if not llm_request.contents:
-        return None
+def _banner(title: str) -> None:
+    """Print a section banner."""
+    width = 60
+    print("\n" + "=" * width)
+    print(f"  {title}")
+    print("=" * width)
 
-    last_content = llm_request.contents[-1]
-    last_part = last_content.parts[-1] if last_content.parts else None
 
-    # Step 1: Check if the last part is a function response from a tool execution
-    if last_part and last_part.function_response:
-        resp = last_part.function_response
-        name = resp.name
+def _section(title: str) -> None:
+    """Print a sub-section header."""
+    print(f"\n── {title} {'─' * max(0, 54 - len(title))}")
 
-        if name == "space_intake_tool":
-            print("[Mock LLM] Space verified. Calling plant_recommendation_tool...")
-            return LlmResponse(
-                content=types.Content(
-                    role="model",
-                    parts=[
-                        types.Part(
-                            function_call=types.FunctionCall(
-                                name="plant_recommendation_tool",
-                                args={
-                                    "sunlight": "full sun",
-                                    "wants_indoor_support": True,
-                                },
-                            )
-                        )
-                    ],
-                ),
-                partial=False,
-            )
 
-        elif name == "plant_recommendation_tool":
-            print("[Mock LLM] Plants recommended. Calling soil_stewardship_tool...")
-            return LlmResponse(
-                content=types.Content(
-                    role="model",
-                    parts=[
-                        types.Part(
-                            function_call=types.FunctionCall(
-                                name="soil_stewardship_tool",
-                                args={
-                                    "location": "Oakville, Ontario",
-                                    "space_type": "backyard patch",
-                                },
-                            )
-                        )
-                    ],
-                ),
-                partial=False,
-            )
+def run_demo() -> None:
+    """Run the full LeafStep workflow and print a formatted report."""
 
-        elif name == "soil_stewardship_tool":
-            print("[Mock LLM] Soil guidelines generated. Calling care_plan_tool...")
-            return LlmResponse(
-                content=types.Content(
-                    role="model",
-                    parts=[
-                        types.Part(
-                            function_call=types.FunctionCall(
-                                name="care_plan_tool",
-                                args={
-                                    "plants": [
-                                        "Butterfly Milkweed",
-                                        "Wild Bergamot",
-                                        "Black-eyed Susan",
-                                    ],
-                                    "experience_level": "beginner",
-                                },
-                            )
-                        )
-                    ],
-                ),
-                partial=False,
-            )
+    _banner("🌿  LeafStep Agent – Local Demo  (No-LLM Mode)")
+    print(
+        "\nThis demo calls every LeafStep tool directly — no Gemini API,\n"
+        "no credentials, and no ADK Runner required.\n"
+    )
 
-        elif name == "care_plan_tool":
-            print(
-                "[Mock LLM] Care plan generated. Calling sustainability_guardrail_tool..."
-            )
-            return LlmResponse(
-                content=types.Content(
-                    role="model",
-                    parts=[
-                        types.Part(
-                            function_call=types.FunctionCall(
-                                name="sustainability_guardrail_tool",
-                                args={
-                                    "proposed_plants": [
-                                        "Butterfly Milkweed",
-                                        "Wild Bergamot",
-                                        "Black-eyed Susan",
-                                        "Spider Plant",
-                                        "Golden Pothos",
-                                    ],
-                                    "proposed_inputs": [
-                                        "organic leaf compost",
-                                        "shredded leaf mulch",
-                                    ],
-                                },
-                            )
-                        )
-                    ],
-                ),
-                partial=False,
-            )
+    # ── Step 0: Mission summary ──────────────────────────────────────────
+    _banner("MISSION SUMMARY")
+    print(
+        f"  Location  : {SCENARIO['location']}\n"
+        f"  Space     : {SCENARIO['dimensions']}\n"
+        f"  Sunlight  : {SCENARIO['sunlight']}\n"
+        f"  Experience: {SCENARIO['experience_level']}\n"
+        f"  Goal      : Pollinator-friendly · Low-maintenance · Soil-supporting\n"
+        f"  Indoor    : {'Yes – starter indoor plants included' if SCENARIO['wants_indoor_support'] else 'No'}"
+    )
 
-        elif name == "sustainability_guardrail_tool":
-            print(
-                "[Mock LLM] Sustainability guardrail passed. Compiling final report..."
-            )
-            report = """# LeafStep Agent: Oakville Green Space Transition Report
+    # ── Step 1: Space intake ─────────────────────────────────────────────
+    _section("STEP 1 · Space Intake & Validation")
+    profile = space_intake_tool(
+        location=SCENARIO["location"],
+        dimensions=SCENARIO["dimensions"],
+        sunlight=SCENARIO["sunlight"],
+        experience_level=SCENARIO["experience_level"],
+        wants_indoor_support=SCENARIO["wants_indoor_support"],
+    )
+    print(f"  Status        : {profile['status'].upper()}")
+    print(f"  Small space?  : {'✔ Yes' if profile['is_small_space'] else '✘ No'}")
+    if profile["space_warning"]:
+        print(f"  ⚠  {profile['space_warning']}")
+    if profile["location_note"]:
+        print(f"  ℹ  {profile['location_note']}")
 
-## LeafStep Space Profile
-- **Location**: Oakville, Ontario (Zone 6b)
-- **Dimensions**: 3x5 backyard patch (Small, manageable starter space)
-- **Sunlight**: Full Sun
-- **Experience Level**: Beginner
-- **Indoor Support Plants**: Yes (Requested)
+    # ── Step 2: Plant recommendations ────────────────────────────────────
+    _section("STEP 2 · Ecosystem-Aware Plant Recommendations")
+    plants_data = plant_recommendation_tool(
+        sunlight=profile["sunlight"],
+        wants_indoor_support=profile["wants_indoor_support"],
+    )
 
----
+    outdoor_plants = plants_data["outdoor_plants"]
+    print(f"\n  Sunlight profile: {plants_data['sunlight_profile']}")
 
-## Recommended Greenery
-
-### Ontario-Native Pollinator Plants (Full Sun)
-1. **Butterfly Milkweed** (*Asclepias tuberosa*)
-   - *Benefits*: Essential host plant for Monarch butterflies; bright orange blossoms.
-   - *Care*: Needs well-drained soil, highly drought-tolerant once established.
-2. **Wild Bergamot** (*Monarda fistulosa*)
-   - *Benefits*: Attracts bumblebees and butterflies; lavender-colored, fragrant flowers.
-   - *Care*: Easy-care, spreads gently to fill out a 3x5 space.
-3. **Black-eyed Susan** (*Rudbeckia hirta*)
-   - *Benefits*: Resilient nectar source for local bees and butterflies.
-   - *Care*: Handles dry soils and heat very well.
-
-### Indoor Support Plants (Starter Greenery)
-- **Spider Plant** (*Chlorophytum comosum*)
-  - *Benefits*: Beginner-friendly, air-purifying, pet-safe.
-  - *Care*: Indirect light, water when top soil feels dry.
-- **Golden Pothos** (*Epipremnum aureum*)
-  - *Benefits*: Extremely hardy, beautiful trailing foliage.
-  - *Care*: Low-light tolerant, low watering needs.
-
----
-
-## Soil Stewardship Plan
-- **Soil Type**: Halton Clay Loam (Typical of Oakville/Halton Region)
-- **Preparation Steps**:
-  1. *Aerate Gently*: Use a garden fork to loosen soil. Avoid deep tilling.
-  2. *Top-dress Compost*: Add 2-3 bags (approx. 2-3 inches) of organic compost to improve drainage and add soil life.
-  3. *Mulching*: Cover with shredded leaf mulch to retain moisture and suppress weeds.
-- **Organic Practices**: Avoid synthetic fertilizers and chemical weed killers to protect local ground water and earthworms.
-
----
-
-## 30-Day Care & Establishment Schedule
-- **Days 1-3**: Plant plugs, water thoroughly immediately. Keep soil damp.
-- **Days 4-7**: Water once every morning. Ensure mulch is kept away from plant stems.
-- **Days 8-14**: Water every 2 days if no rain. Hand-weed gently to avoid root disturbance.
-- **Days 15-21**: Water twice a week. Spend 5 minutes observing any insect activity.
-- **Days 22-30**: Water only during extreme heat. Plants are establishing self-sufficiency.
-
----
-
-## Sustainability & Guardrail Verification
-- **Invasive Species Check**: PASS (None of the proposed plants are invasive in Ontario).
-- **Chemical Inputs Check**: PASS (No synthetic fertilizers or toxic pesticides were requested/recommended).
-- **Status**: **VERIFIED ECOLOGICALLY SAFE**
-"""
-            return LlmResponse(
-                content=types.Content(role="model", parts=[types.Part(text=report)]),
-                partial=False,
-            )
-
-    # Step 2: User prompt received (initial model call)
-    if last_content.role == "user":
-        print("[Mock LLM] Processing user request. Calling space_intake_tool...")
-        return LlmResponse(
-            content=types.Content(
-                role="model",
-                parts=[
-                    types.Part(
-                        function_call=types.FunctionCall(
-                            name="space_intake_tool",
-                            args={
-                                "location": "Oakville, Ontario",
-                                "dimensions": "3x5 backyard patch",
-                                "sunlight": "full sun",
-                                "experience_level": "beginner",
-                                "wants_indoor_support": True,
-                            },
-                        )
-                    )
-                ],
-            ),
-            partial=False,
+    _banner("OUTDOOR PLANT RECOMMENDATIONS  (Ontario Natives)")
+    for i, plant in enumerate(outdoor_plants, start=1):
+        print(
+            f"\n  {i}. {plant['common_name']} ({plant['scientific_name']})\n"
+            f"     Benefits : {plant['benefits']}\n"
+            f"     Care     : {plant['care']}"
         )
 
-    return None
+    indoor_plants = plants_data["indoor_plants"]
+    _banner("INDOOR SUPPORT PLANTS")
+    if indoor_plants:
+        for i, plant in enumerate(indoor_plants, start=1):
+            print(
+                f"\n  {i}. {plant['common_name']} ({plant['scientific_name']})\n"
+                f"     Benefits : {plant['benefits']}\n"
+                f"     Care     : {plant['care']}"
+            )
+    else:
+        print("  (No indoor plants requested)")
 
-
-async def run_demo():
-    print("====================================================")
-    print("Starting LeafStep Agent Oakville Scenario Demo...")
-    print("====================================================")
-
-    # 1. Setup in-memory session service
-    session_service = InMemorySessionService()
-    user_id = "oakville_household_1"
-    session_id = "leafstep_session_001"
-
-    await session_service.create_session(
-        app_name="app", user_id=user_id, session_id=session_id
+    # ── Step 3: Soil stewardship ─────────────────────────────────────────
+    _banner("SOIL STEWARDSHIP PLAN")
+    soil_data = soil_stewardship_tool(
+        location=profile["location"],
+        space_type="backyard patch",
     )
+    print(f"\n  Soil profile  : {soil_data['soil_profile']}")
+    print(f"  Space type    : {soil_data['space_type']}")
+    print("\n  Preparation steps:")
+    for i, step in enumerate(soil_data["preparation_steps"], start=1):
+        print(f"    {i}. {step}")
+    print("\n  Organic practices:")
+    for practice in soil_data["organic_practices"]:
+        print(f"    • {practice}")
+    print(f"\n  💡 Tip: {soil_data['tips']}")
 
-    # 2. Instantiate the ADK Runner
-    runner = Runner(agent=root_agent, app_name="app", session_service=session_service)
-
-    # Define the Oakville household scenario prompt
-    prompt = (
-        "I live in Oakville, Ontario and want to start my first green space. "
-        "I have a 3x5 backyard patch with full sun. "
-        "I am a beginner and want a pollinator-friendly, low-maintenance, "
-        "and soil-supporting garden. I would also love to have indoor support plants."
+    # ── Step 4: 30-day care plan ─────────────────────────────────────────
+    plant_names = [p["common_name"] for p in outdoor_plants]
+    _banner("30-DAY ESTABLISHMENT CARE PLAN")
+    care_data = care_plan_tool(
+        plants=plant_names,
+        experience_level=profile["experience_level"],
     )
+    print(f"\n  Plants covered  : {', '.join(care_data['target_plants'])}")
+    print(f"  Experience level: {care_data['experience_level']}\n")
+    for period, instructions in care_data["schedule"].items():
+        print(f"  [{period}]\n    {instructions}\n")
+    print("  📝 Care tips:")
+    for tip in care_data["tips"]:
+        print(f"    • {tip}")
 
-    print(f"\nUser Input:\n{prompt}\n")
+    # ── Step 5: Sustainability guardrail ─────────────────────────────────
+    all_plant_names = plant_names + [p["common_name"] for p in indoor_plants]
+    proposed_inputs = ["organic leaf compost", "shredded leaf mulch", "compost tea"]
+
+    _banner("SUSTAINABILITY GUARDRAIL CHECK")
+    guardrail = sustainability_guardrail_tool(
+        proposed_plants=all_plant_names,
+        proposed_inputs=proposed_inputs,
+    )
+    status_icon = "✅ PASS" if guardrail["status"] == "PASS" else "❌ FAIL"
+    print(f"\n  Overall status: {status_icon}")
+    if guardrail["violations"]:
+        print("\n  Violations found:")
+        for v in guardrail["violations"]:
+            print(f"    ⛔ {v}")
+    else:
+        print("  Invasive species check : PASS  (no invasive plants detected)")
+        print("  Chemical inputs check  : PASS  (no synthetic inputs detected)")
+    print(f"\n  Recommendation: {guardrail['recommendation']}")
+
+    # ── Final summary ────────────────────────────────────────────────────
+    _banner("🌱  LEAFSTEP WORKFLOW COMPLETE")
     print(
-        "Running LeafStep Agent (invoking tools, checking guardrails, generating report)..."
+        "\n  All five tools executed successfully with zero LLM calls.\n"
+        "  Your Oakville green space plan is ready!\n\n"
+        "  Next steps:\n"
+        "    • Source Ontario-native plugs from a local native plant nursery.\n"
+        "    • Pick up organic compost (2-3 bags for a 3x5 space).\n"
+        "    • Follow the 30-day care schedule above.\n"
+        "    • Run `agents-cli run` when ready to use the full AI-powered agent.\n"
     )
-
-    # 3. Execute the agent asynchronously
-    async for event in runner.run_async(
-        user_id=user_id,
-        session_id=session_id,
-        new_message=types.Content(
-            role="user", parts=[types.Part.from_text(text=prompt)]
-        ),
-    ):
-        # We print events as they progress to show the agent's actions/thinking
-        if event.is_final_response():
-            print("\n====================================================")
-            print("LEAFSTEP AGENT FINAL REPORT:")
-            print("====================================================\n")
-            print(event.content.parts[0].text)
-            print("\n====================================================")
+    print("=" * 60 + "\n")
 
 
 if __name__ == "__main__":
-    # Check if Vertex or Studio API keys are set, activate mock if missing
-    has_creds = False
-    if os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"):
-        has_creds = True
-    else:
-        try:
-            _, project_id = google.auth.default()
-            if project_id:
-                has_creds = True
-        except Exception:
-            pass
-
-    if not has_creds:
-        print(
-            "⚠️  No Google GenAI credentials or API keys found. "
-            "Activating offline simulation/dry-run mode..."
-        )
-        root_agent.before_model_callback = mock_llm_callback
-    else:
-        print("💡 Credentials found. Running in online mode using Gemini models.")
-
-    asyncio.run(run_demo())
+    run_demo()
