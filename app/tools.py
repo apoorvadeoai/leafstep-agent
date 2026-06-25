@@ -492,6 +492,205 @@ def plant_recommendation_tool(
         ),
     }
 
+def plant_safety_tool(
+    recommended_plants: list[dict[str, Any]],
+    safety_mode: str,
+    plant_count_target: int,
+) -> dict[str, Any]:
+    """Filters recommended plants using LeafStep pet/kid safety rules.
+
+    Safety labels:
+    - safe_pick: allowed in the main buy list
+    - careful_placement: only shown if more options are needed
+    - do_not_buy: never shown in the buy list
+    """
+
+    normalized_safety = safety_mode.strip().lower()
+
+    safety_database = {
+        "Butterfly Milkweed": {
+            "pets": "careful_placement",
+            "kids": "careful_placement",
+            "pets_and_kids": "careful_placement",
+            "reason": "keep away from chewing or digging",
+        },
+        "Black-eyed Susan": {
+            "pets": "safe_pick",
+            "kids": "safe_pick",
+            "pets_and_kids": "safe_pick",
+            "reason": "low-risk garden pick",
+        },
+        "Purple Coneflower": {
+            "pets": "safe_pick",
+            "kids": "safe_pick",
+            "pets_and_kids": "safe_pick",
+            "reason": "low-risk garden pick",
+        },
+        "Wild Bergamot": {
+            "pets": "safe_pick",
+            "kids": "safe_pick",
+            "pets_and_kids": "safe_pick",
+            "reason": "low-risk garden pick",
+        },
+        "New England Aster": {
+            "pets": "safe_pick",
+            "kids": "safe_pick",
+            "pets_and_kids": "safe_pick",
+            "reason": "low-risk garden pick",
+        },
+        "Little Bluestem": {
+            "pets": "safe_pick",
+            "kids": "safe_pick",
+            "pets_and_kids": "safe_pick",
+            "reason": "low-risk grass-like habitat plant",
+        },
+        "Switchgrass": {
+            "pets": "safe_pick",
+            "kids": "safe_pick",
+            "pets_and_kids": "safe_pick",
+            "reason": "low-risk grass-like habitat plant",
+        },
+        "Wild Strawberry": {
+            "pets": "safe_pick",
+            "kids": "safe_pick",
+            "pets_and_kids": "safe_pick",
+            "reason": "edible groundcover",
+        },
+        "Serviceberry": {
+            "pets": "safe_pick",
+            "kids": "safe_pick",
+            "pets_and_kids": "safe_pick",
+            "reason": "edible berry shrub/tree",
+        },
+        "Highbush Blueberry": {
+            "pets": "safe_pick",
+            "kids": "safe_pick",
+            "pets_and_kids": "safe_pick",
+            "reason": "edible berry shrub",
+        },
+        "Red Raspberry": {
+            "pets": "careful_placement",
+            "kids": "careful_placement",
+            "pets_and_kids": "careful_placement",
+            "reason": "can be thorny; place away from rough play or chewing",
+        },
+        "Elderberry": {
+            "pets": "careful_placement",
+            "kids": "careful_placement",
+            "pets_and_kids": "careful_placement",
+            "reason": "berries and plant parts need careful handling",
+        },
+        "Ostrich Fern": {
+            "pets": "careful_placement",
+            "kids": "careful_placement",
+            "pets_and_kids": "careful_placement",
+            "reason": "use where pets/kids will not chew plants",
+        },
+        "Wild Ginger": {
+            "pets": "careful_placement",
+            "kids": "careful_placement",
+            "pets_and_kids": "careful_placement",
+            "reason": "keep away from chewing or digging",
+        },
+        "Foamflower": {
+            "pets": "safe_pick",
+            "kids": "safe_pick",
+            "pets_and_kids": "safe_pick",
+            "reason": "low-risk shade plant",
+        },
+        "Pennsylvania Sedge": {
+            "pets": "safe_pick",
+            "kids": "safe_pick",
+            "pets_and_kids": "safe_pick",
+            "reason": "low-risk groundcover",
+        },
+        "Canada Anemone": {
+            "pets": "careful_placement",
+            "kids": "careful_placement",
+            "pets_and_kids": "careful_placement",
+            "reason": "keep away from chewing access",
+        },
+        "Dense Blazing Star": {
+            "pets": "safe_pick",
+            "kids": "safe_pick",
+            "pets_and_kids": "safe_pick",
+            "reason": "low-risk pollinator flower",
+        },
+    }
+
+    known_do_not_buy = [
+        {
+            "common_name": "Foxglove",
+            "reason": "toxic; do not use in pet/kid-accessible spaces",
+        },
+        {
+            "common_name": "Lily of the Valley",
+            "reason": "toxic; do not use in pet/kid-accessible spaces",
+        },
+        {
+            "common_name": "Daffodil bulbs",
+            "reason": "toxic if eaten; avoid in pet/kid-accessible spaces",
+        },
+    ]
+
+    if normalized_safety in {"none", "no special safety concern"}:
+        return {
+            "safety_mode": "none",
+            "buy_list": recommended_plants[:plant_count_target],
+            "careful_placement_list": [],
+            "do_not_buy_list": known_do_not_buy,
+            "safety_summary": "No special safety filter selected.",
+        }
+
+    buy_list = []
+    careful_placement_list = []
+    do_not_buy_list = known_do_not_buy.copy()
+
+    for plant in recommended_plants:
+        plant_name = plant.get("common_name", "")
+        safety_record = safety_database.get(plant_name, {})
+        safety_label = safety_record.get(normalized_safety, "careful_placement")
+        reason = safety_record.get("reason", "keep away from pets/kids")
+
+        plant_with_safety = {
+            **plant,
+            "safety_label": safety_label,
+            "safety_reason": reason,
+        }
+
+        if safety_label == "safe_pick":
+            buy_list.append(plant_with_safety)
+        elif safety_label == "careful_placement":
+            careful_placement_list.append(plant_with_safety)
+        else:
+            do_not_buy_list.append(
+                {
+                    "common_name": plant_name,
+                    "reason": reason,
+                }
+            )
+
+    if len(buy_list) < plant_count_target:
+        needed = plant_count_target - len(buy_list)
+        buy_list = buy_list + careful_placement_list[:needed]
+        careful_placement_list = careful_placement_list[needed:]
+
+    if normalized_safety == "pets":
+        summary = "Pet-safe mode on. Dangerous plants removed."
+    elif normalized_safety == "kids":
+        summary = "Kid-safe mode on. Dangerous plants removed."
+    elif normalized_safety == "pets_and_kids":
+        summary = "Strict safety mode on. Dangerous plants removed."
+    else:
+        summary = "Safety filter applied."
+
+    return {
+        "safety_mode": normalized_safety,
+        "buy_list": buy_list[:plant_count_target],
+        "careful_placement_list": careful_placement_list,
+        "do_not_buy_list": do_not_buy_list,
+        "safety_summary": summary,
+    }
 def soil_stewardship_tool(location: str, space_type: str) -> dict[str, Any]:
     """Provides organic soil stewardship recommendations for the given location and space type.
 
