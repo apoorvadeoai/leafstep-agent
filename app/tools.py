@@ -691,6 +691,90 @@ def plant_safety_tool(
         "do_not_buy_list": do_not_buy_list,
         "safety_summary": summary,
     }
+
+def impact_tracking_tool(
+    buy_list: list[dict[str, Any]],
+    careful_placement_list: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Creates simple LeafStep impact badges and lifecycle tracking guidance.
+
+    LeafStep uses bands instead of numeric habitat scores:
+    - Pollinator support: Low / Medium / High
+    - Water need: Low / Medium / High
+    - Maintenance: Low / Medium / High
+    - Native fit: Weak / Good / Strong
+    """
+
+    selected_plants = buy_list + careful_placement_list
+
+    if not selected_plants:
+        return {
+            "pollinator_support": "Low",
+            "water_need": "High",
+            "maintenance": "High",
+            "native_fit": "Weak",
+            "biodiversity_value": "Low",
+            "tracking_action": "Add your first plant to start tracking growth.",
+        }
+
+    def _majority_band(values: list[str], preferred_order: list[str]) -> str:
+        counts = {value: values.count(value) for value in preferred_order}
+        return max(counts, key=counts.get)
+
+    pollinator_values = [plant.get("pollinator_support", "Low") for plant in selected_plants]
+    water_values = [plant.get("water_need", "Medium") for plant in selected_plants]
+    maintenance_values = [plant.get("maintenance", "Medium") for plant in selected_plants]
+    native_values = [plant.get("native_fit", "Good") for plant in selected_plants]
+
+    high_pollinator_count = pollinator_values.count("High")
+    strong_native_count = native_values.count("Strong")
+    low_water_count = water_values.count("Low")
+    low_maintenance_count = maintenance_values.count("Low")
+
+    if high_pollinator_count >= max(1, len(selected_plants) // 2):
+        pollinator_support = "High"
+    elif "Medium" in pollinator_values or high_pollinator_count > 0:
+        pollinator_support = "Medium"
+    else:
+        pollinator_support = "Low"
+
+    if low_water_count >= max(1, len(selected_plants) // 2):
+        water_need = "Low"
+    elif "Medium" in water_values:
+        water_need = "Medium"
+    else:
+        water_need = "High"
+
+    if low_maintenance_count >= max(1, len(selected_plants) // 2):
+        maintenance = "Low"
+    elif "Medium" in maintenance_values:
+        maintenance = "Medium"
+    else:
+        maintenance = "High"
+
+    if strong_native_count >= max(1, len(selected_plants) // 2):
+        native_fit = "Strong"
+    elif "Good" in native_values or strong_native_count > 0:
+        native_fit = "Good"
+    else:
+        native_fit = "Weak"
+
+    if pollinator_support == "High" and native_fit in {"Strong", "Good"}:
+        biodiversity_value = "High"
+    elif pollinator_support == "Medium" or native_fit == "Good":
+        biodiversity_value = "Medium"
+    else:
+        biodiversity_value = "Low"
+
+    return {
+        "pollinator_support": pollinator_support,
+        "water_need": water_need,
+        "maintenance": maintenance,
+        "native_fit": native_fit,
+        "biodiversity_value": biodiversity_value,
+        "tracking_action": "Take a first photo and log first bloom or new growth later.",
+    }
+    
 def soil_stewardship_tool(location: str, space_type: str) -> dict[str, Any]:
     """Provides organic soil stewardship recommendations for the given location and space type.
 
