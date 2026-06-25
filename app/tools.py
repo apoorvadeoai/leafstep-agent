@@ -23,56 +23,127 @@ from typing import Any
 
 def space_intake_tool(
     location: str,
-    dimensions: str,
+    space_type: str,
     sunlight: str,
-    experience_level: str,
-    wants_indoor_support: bool,
+    garden_style: str,
+    safety_mode: str,
+    starter_size: str,
 ) -> dict[str, Any]:
-    """Validates and structures the input space information for LeafStep.
+    """Normalizes the 6-question LeafStep setup into a structured profile.
+
+    LeafStep uses a quick multiple-choice style intake instead of asking users
+    to measure square footage or provide unnecessary personal information.
 
     Args:
-        location: The household location (e.g. 'Oakville, Ontario').
-        dimensions: The size and type of the space (e.g. '3x5 backyard patch').
-        sunlight: Sunlight levels ('full sun', 'partial shade', 'shade').
-        experience_level: Gardening experience level ('beginner', 'intermediate', 'advanced').
-        wants_indoor_support: Whether the user wants indoor support plants.
+        location: City or general region, e.g. "Oakville, Ontario".
+        space_type: Backyard, front yard, balcony/patio, side strip, community garden, or custom text.
+        sunlight: Full sun, part sun, mostly shade, or custom text.
+        garden_style: Flowers, leafy green plants, fruits/edible plants, balanced mix, surprise me, or custom text.
+        safety_mode: Dogs/cats, kids, both pets and kids, none, or custom text.
+        starter_size: Tiny, small, medium, large, or custom text.
 
     Returns:
-        A dictionary containing the validated and structured space profile.
+        A normalized user profile for downstream LeafStep tools.
     """
-    # Standardize input values slightly
-    loc_clean = location.strip()
-    dim_clean = dimensions.strip()
-    sun_clean = sunlight.lower().strip()
-    exp_clean = experience_level.lower().strip()
 
-    # Simple size validation check (checking for a small scale space, e.g. 3x5)
-    is_small_space = any(
-        x in dim_clean for x in ["3x5", "3 x 5", "15 sq", "small", "patch", "container"]
-    )
+    def _clean(value: str) -> str:
+        return value.strip().lower()
 
-    # We encourage small spaces for the first step
-    space_warning = ""
-    if not is_small_space:
-        space_warning = "LeafStep focuses on small, manageable spaces (like 3x5 ft) for your first step. Proceeding with caution for larger spaces."
+    def _normalize_space(value: str) -> str:
+        value = _clean(value)
+        if "back" in value:
+            return "backyard"
+        if "front" in value:
+            return "front_yard"
+        if "balcony" in value or "patio" in value or "container" in value:
+            return "balcony_patio"
+        if "side" in value or "strip" in value:
+            return "side_yard_strip"
+        if "community" in value:
+            return "community_garden"
+        return value or "custom_space"
 
-    is_oakville = "oakville" in loc_clean.lower()
+    def _normalize_sunlight(value: str) -> str:
+        value = _clean(value)
+        if "full" in value or "6" in value:
+            return "full_sun"
+        if "part" in value or "2" in value or "3" in value:
+            return "part_sun"
+        if "shade" in value:
+            return "mostly_shade"
+        return value or "custom_sunlight"
+
+    def _normalize_garden_style(value: str) -> str:
+        value = _clean(value)
+        if "flower" in value:
+            return "flowers"
+        if "leaf" in value or "green" in value:
+            return "leafy"
+        if "fruit" in value or "edible" in value or "berry" in value:
+            return "fruits_edible"
+        if "balanced" in value or "mix" in value:
+            return "balanced"
+        if "surprise" in value:
+            return "surprise_me"
+        return value or "custom_style"
+
+    def _normalize_safety_mode(value: str) -> str:
+        value = _clean(value)
+        if "both" in value or ("kid" in value and ("dog" in value or "cat" in value or "pet" in value)):
+            return "pets_and_kids"
+        if "dog" in value or "cat" in value or "pet" in value:
+            return "pets"
+        if "kid" in value or "child" in value or "children" in value:
+            return "kids"
+        if "none" in value or "no" in value:
+            return "none"
+        return value or "custom_safety"
+
+    def _normalize_starter_size(value: str) -> tuple[str, int]:
+        value = _clean(value)
+        if "tiny" in value or "2" in value:
+            return "tiny", 2
+        if "small" in value or "5" in value:
+            return "small", 5
+        if "medium" in value or "10" in value:
+            return "medium", 10
+        if "large" in value or "15" in value:
+            return "large", 15
+        return "custom", 5
+
+    region = location.strip() or "Ontario"
+    normalized_space = _normalize_space(space_type)
+    normalized_sunlight = _normalize_sunlight(sunlight)
+    normalized_style = _normalize_garden_style(garden_style)
+    normalized_safety = _normalize_safety_mode(safety_mode)
+    patch_size, plant_count_target = _normalize_starter_size(starter_size)
+
     location_note = ""
-    if not is_oakville:
-        location_note = "LeafStep is optimized for Oakville, Ontario. Planting lists will default to Ontario Zone 6b native options."
+    if any(word in region.lower() for word in ["address", "street", "postal", "zip"]):
+        location_note = (
+            "LeafStep does not need an exact address. City or general region is enough."
+        )
 
     return {
-        "location": loc_clean,
-        "dimensions": dim_clean,
-        "sunlight": sun_clean,
-        "experience_level": exp_clean,
-        "wants_indoor_support": wants_indoor_support,
-        "is_small_space": is_small_space,
-        "space_warning": space_warning,
+        "region": region,
+        "space_type": normalized_space,
+        "sunlight": normalized_sunlight,
+        "garden_style": normalized_style,
+        "safety_mode": normalized_safety,
+        "patch_size": patch_size,
+        "plant_count_target": plant_count_target,
+        "exact_address_needed": False,
         "location_note": location_note,
+        "default_leafstep_goals": [
+            "pollinator_friendly",
+            "water_saving",
+            "low_maintenance",
+            "native_or_region_friendly",
+            "ecosystem_balance",
+            "lifecycle_tracking",
+        ],
         "status": "valid",
     }
-
 
 def plant_recommendation_tool(
     sunlight: str, wants_indoor_support: bool
