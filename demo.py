@@ -1,37 +1,24 @@
 # Copyright 2026 Google LLC
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     https://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Licensed under the Apache License, Version 2.0
 
-"""LeafStep Agent – Local No-LLM Demo.
+"""LeafStep Agent – Day 2 Local No-LLM Demo.
 
-Runs all five LeafStep tools directly (no Gemini / no ADK Runner) and prints
-a fully-formatted green space report for an Oakville household scenario.
+Runs the Day 2 LeafStep workflow directly:
+1. Guided 6-question intake
+2. Rich plant recommendations
+3. Pet/kid safety filtering
+4. Impact badges
+5. Short action-card output
 
 Usage:
-    python demo.py
-
-The ADK project structure (app/agent.py, app/tools.py, etc.) remains intact
-and is unaffected by this demo mode.
+    uv run python demo.py
 """
 
 import importlib.util
-import sys
 import os
 
-# ── Import tools directly from the source file ──────────────────────────────
-# We load tools.py directly rather than via the `app` package so that
-# app/__init__.py (which imports agent.py → google.adk) is never triggered.
-# This keeps the demo completely dependency-free (no ADK, no Gemini).
+# Import tools.py directly so app/__init__.py and google.adk are not triggered.
 _tools_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app", "tools.py")
 _spec = importlib.util.spec_from_file_location("app.tools", _tools_path)
 _tools = importlib.util.module_from_spec(_spec)
@@ -39,164 +26,220 @@ _spec.loader.exec_module(_tools)
 
 space_intake_tool = _tools.space_intake_tool
 plant_recommendation_tool = _tools.plant_recommendation_tool
+plant_safety_tool = _tools.plant_safety_tool
+impact_tracking_tool = _tools.impact_tracking_tool
 soil_stewardship_tool = _tools.soil_stewardship_tool
 care_plan_tool = _tools.care_plan_tool
 sustainability_guardrail_tool = _tools.sustainability_guardrail_tool
 
-# ─────────────────────────────────────────────
-# Scenario: Oakville household, Day 1 prototype
-# ─────────────────────────────────────────────
-SCENARIO = {
-    "location": "Oakville, Ontario",
-    "dimensions": "3x5 backyard patch",
-    "sunlight": "full sun",
-    "experience_level": "beginner",
-    "wants_indoor_support": True,
-}
+
+SCENARIOS = [
+    {
+        "name": "Backyard flower patch with pets",
+        "location": "Oakville, Ontario",
+        "space_type": "Backyard",
+        "sunlight": "Full sun — 6+ hours",
+        "garden_style": "More flowers",
+        "safety_mode": "Dogs / cats",
+        "starter_size": "Small — 5 small plants",
+    },
+    {
+        "name": "Shady leafy side strip with kids",
+        "location": "Oakville, Ontario",
+        "space_type": "Side yard / small strip",
+        "sunlight": "Mostly shade — little direct sun",
+        "garden_style": "More leafy green plants",
+        "safety_mode": "Kids",
+        "starter_size": "Tiny — 2 small plants",
+    },
+    {
+        "name": "Balcony edible starter",
+        "location": "Toronto, Ontario",
+        "space_type": "Balcony / patio",
+        "sunlight": "Part sun — 2–3 hours",
+        "garden_style": "More fruits / edible plants",
+        "safety_mode": "None",
+        "starter_size": "Tiny — 2 small plants",
+    },
+]
 
 
-def _banner(title: str) -> None:
-    """Print a section banner."""
-    width = 60
-    print("\n" + "=" * width)
-    print(f"  {title}")
-    print("=" * width)
+def _print_setup(scenario: dict) -> None:
+    print("\n🌿 LeafStep Setup\n")
+    print("Q1/6 — Where should LeafStep plan for?")
+    print("A. Use my location")
+    print("B. I’ll type my city")
+    print(f"> B — {scenario['location']}\n")
+
+    print("Q2/6 — Where do you want more green?")
+    print("A. Backyard")
+    print("B. Front yard")
+    print("C. Balcony / patio")
+    print("D. Side yard / small strip")
+    print("E. Community garden")
+    print("F. Other / I’ll type it")
+    print(f"> A — {scenario['space_type']}\n")
+
+    print("Q3/6 — How much direct sun does it get?")
+    print("A. Full sun — 6+ hours")
+    print("B. Part sun — 2–3 hours")
+    print("C. Mostly shade — little direct sun")
+    print("D. Other / I’ll type it")
+    print(f"> A — {scenario['sunlight']}\n")
+
+    print("Q4/6 — What look do you want?")
+    print("A. More flowers")
+    print("B. More leafy green plants")
+    print("C. More fruits / edible plants")
+    print("D. Balanced mix")
+    print("E. Surprise me")
+    print("F. Other / I’ll type it")
+    print(f"> A — {scenario['garden_style']}\n")
+
+    print("Q5/6 — Should LeafStep avoid plants risky for anyone?")
+    print("A. Dogs / cats")
+    print("B. Kids")
+    print("C. Both pets and kids")
+    print("D. None")
+    print("E. Something else / I’ll type it")
+    print(f"> A — {scenario['safety_mode']}\n")
+
+    print("Q6/6 — How big should your first LeafStep be?")
+    print("A. Tiny — 2 small plants")
+    print("B. Small — 5 small plants")
+    print("C. Medium — about 10 plants")
+    print("D. Large — 15+ plants")
+    print("E. Other / I’ll type it")
+    print(f"> B — {scenario['starter_size']}\n")
 
 
-def _section(title: str) -> None:
-    """Print a sub-section header."""
-    print(f"\n── {title} {'─' * max(0, 54 - len(title))}")
+def _status_icon(value: str, lower_is_better: bool = False) -> str:
+    if lower_is_better:
+        if value == "Low":
+            return "✅"
+        if value == "Medium":
+            return "🟡"
+        return "❌"
+
+    if value in {"High", "Strong"}:
+        return "✅"
+    if value in {"Medium", "Good"}:
+        return "🟡"
+    return "❌"
 
 
 def run_demo() -> None:
-    """Run the full LeafStep workflow and print a formatted report."""
+    """Run the Day 2 LeafStep workflow and print a short product-style result."""
 
-    _banner("🌿  LeafStep Agent – Local Demo  (No-LLM Mode)")
-    print(
-        "\nThis demo calls every LeafStep tool directly — no Gemini API,\n"
-        "no credentials, and no ADK Runner required.\n"
-    )
+    _print_setup(SCENARIOS[0])
 
-    # ── Step 0: Mission summary ──────────────────────────────────────────
-    _banner("MISSION SUMMARY")
-    print(
-        f"  Location  : {SCENARIO['location']}\n"
-        f"  Space     : {SCENARIO['dimensions']}\n"
-        f"  Sunlight  : {SCENARIO['sunlight']}\n"
-        f"  Experience: {SCENARIO['experience_level']}\n"
-        f"  Goal      : Pollinator-friendly · Low-maintenance · Soil-supporting\n"
-        f"  Indoor    : {'Yes – starter indoor plants included' if SCENARIO['wants_indoor_support'] else 'No'}"
-    )
-
-    # ── Step 1: Space intake ─────────────────────────────────────────────
-    _section("STEP 1 · Space Intake & Validation")
     profile = space_intake_tool(
-        location=SCENARIO["location"],
-        dimensions=SCENARIO["dimensions"],
-        sunlight=SCENARIO["sunlight"],
-        experience_level=SCENARIO["experience_level"],
-        wants_indoor_support=SCENARIO["wants_indoor_support"],
+        location=SCENARIOS[0]["location"],
+        space_type=SCENARIOS[0]["space_type"],
+        sunlight=SCENARIOS[0]["sunlight"],
+        garden_style=SCENARIOS[0]["garden_style"],
+        safety_mode=SCENARIOS[0]["safety_mode"],
+        starter_size=SCENARIOS[0]["starter_size"],
     )
-    print(f"  Status        : {profile['status'].upper()}")
-    print(f"  Small space?  : {'✔ Yes' if profile['is_small_space'] else '✘ No'}")
-    if profile["space_warning"]:
-        print(f"  ⚠  {profile['space_warning']}")
-    if profile["location_note"]:
-        print(f"  ℹ  {profile['location_note']}")
 
-    # ── Step 2: Plant recommendations ────────────────────────────────────
-    _section("STEP 2 · Ecosystem-Aware Plant Recommendations")
-    plants_data = plant_recommendation_tool(
+    recommendations = plant_recommendation_tool(
+        region=profile["region"],
+        space_type=profile["space_type"],
         sunlight=profile["sunlight"],
-        wants_indoor_support=profile["wants_indoor_support"],
+        garden_style=profile["garden_style"],
+        plant_count_target=profile["plant_count_target"],
     )
 
-    outdoor_plants = plants_data["outdoor_plants"]
-    print(f"\n  Sunlight profile: {plants_data['sunlight_profile']}")
-
-    _banner("OUTDOOR PLANT RECOMMENDATIONS  (Ontario Natives)")
-    for i, plant in enumerate(outdoor_plants, start=1):
-        print(
-            f"\n  {i}. {plant['common_name']} ({plant['scientific_name']})\n"
-            f"     Benefits : {plant['benefits']}\n"
-            f"     Care     : {plant['care']}"
-        )
-
-    indoor_plants = plants_data["indoor_plants"]
-    _banner("INDOOR SUPPORT PLANTS")
-    if indoor_plants:
-        for i, plant in enumerate(indoor_plants, start=1):
-            print(
-                f"\n  {i}. {plant['common_name']} ({plant['scientific_name']})\n"
-                f"     Benefits : {plant['benefits']}\n"
-                f"     Care     : {plant['care']}"
-            )
-    else:
-        print("  (No indoor plants requested)")
-
-    # ── Step 3: Soil stewardship ─────────────────────────────────────────
-    _banner("SOIL STEWARDSHIP PLAN")
-    soil_data = soil_stewardship_tool(
-        location=profile["location"],
-        space_type="backyard patch",
+    safety = plant_safety_tool(
+        recommended_plants=recommendations["recommended_plants"],
+        safety_mode=profile["safety_mode"],
+        plant_count_target=profile["plant_count_target"],
     )
-    print(f"\n  Soil profile  : {soil_data['soil_profile']}")
-    print(f"  Space type    : {soil_data['space_type']}")
-    print("\n  Preparation steps:")
-    for i, step in enumerate(soil_data["preparation_steps"], start=1):
-        print(f"    {i}. {step}")
-    print("\n  Organic practices:")
-    for practice in soil_data["organic_practices"]:
-        print(f"    • {practice}")
-    print(f"\n  💡 Tip: {soil_data['tips']}")
 
-    # ── Step 4: 30-day care plan ─────────────────────────────────────────
-    plant_names = [p["common_name"] for p in outdoor_plants]
-    _banner("30-DAY ESTABLISHMENT CARE PLAN")
-    care_data = care_plan_tool(
+    impact = impact_tracking_tool(
+        buy_list=safety["buy_list"],
+        careful_placement_list=safety["careful_placement_list"],
+    )
+
+    plant_names = [plant["common_name"] for plant in safety["buy_list"]]
+    careful_names = [plant["common_name"] for plant in safety["careful_placement_list"]]
+
+    soil = soil_stewardship_tool(
+        location=profile["region"],
+        space_type=profile["space_type"],
+    )
+
+    care = care_plan_tool(
         plants=plant_names,
-        experience_level=profile["experience_level"],
+        experience_level="beginner",
     )
-    print(f"\n  Plants covered  : {', '.join(care_data['target_plants'])}")
-    print(f"  Experience level: {care_data['experience_level']}\n")
-    for period, instructions in care_data["schedule"].items():
-        print(f"  [{period}]\n    {instructions}\n")
-    print("  📝 Care tips:")
-    for tip in care_data["tips"]:
-        print(f"    • {tip}")
 
-    # ── Step 5: Sustainability guardrail ─────────────────────────────────
-    all_plant_names = plant_names + [p["common_name"] for p in indoor_plants]
-    proposed_inputs = ["organic leaf compost", "shredded leaf mulch", "compost tea"]
-
-    _banner("SUSTAINABILITY GUARDRAIL CHECK")
     guardrail = sustainability_guardrail_tool(
-        proposed_plants=all_plant_names,
-        proposed_inputs=proposed_inputs,
+        proposed_plants=plant_names + careful_names,
+        proposed_inputs=["organic compost", "shredded leaf mulch"],
     )
-    status_icon = "✅ PASS" if guardrail["status"] == "PASS" else "❌ FAIL"
-    print(f"\n  Overall status: {status_icon}")
-    if guardrail["violations"]:
-        print("\n  Violations found:")
-        for v in guardrail["violations"]:
-            print(f"    ⛔ {v}")
-    else:
-        print("  Invasive species check : PASS  (no invasive plants detected)")
-        print("  Chemical inputs check  : PASS  (no synthetic inputs detected)")
-    print(f"\n  Recommendation: {guardrail['recommendation']}")
 
-    # ── Final summary ────────────────────────────────────────────────────
-    _banner("🌱  LEAFSTEP WORKFLOW COMPLETE")
+    print("🌿 LeafStep Plan\n")
+
+    print("Best next step:")
     print(
-        "\n  All five tools executed successfully with zero LLM calls.\n"
-        "  Your Oakville green space plan is ready!\n\n"
-        "  Next steps:\n"
-        "    • Source Ontario-native plugs from a local native plant nursery.\n"
-        "    • Pick up organic compost (2-3 bags for a 3x5 space).\n"
-        "    • Follow the 30-day care schedule above.\n"
-        "    • Run `agents-cli run` when ready to use the full AI-powered agent.\n"
+        f"Start a {profile['plant_count_target']}-plant "
+        f"{profile['garden_style'].replace('_', ' ')} patch in your "
+        f"{profile['space_type'].replace('_', ' ')}.\n"
     )
-    print("=" * 60 + "\n")
+
+    print("Plants to buy:")
+    for plant in safety["buy_list"]:
+        print(f"✅ {plant['common_name']}")
+
+    if safety["careful_placement_list"]:
+        print("\nCareful placement:")
+        for plant in safety["careful_placement_list"][:2]:
+            reason = plant.get("safety_reason", "keep away from pets/kids")
+            print(f"⚠️ {plant['common_name']} — {reason}")
+
+    print("\nAvoid:")
+    for plant in safety["do_not_buy_list"][:3]:
+        print(f"❌ {plant['common_name']}")
+
+    print("\nImpact:")
+    print(
+        f"🦋 Pollinator support: {impact['pollinator_support']} "
+        f"{_status_icon(impact['pollinator_support'])}"
+    )
+    print(
+        f"💧 Water need: {impact['water_need']} "
+        f"{_status_icon(impact['water_need'], lower_is_better=True)}"
+    )
+    print(
+        f"🧤 Maintenance: {impact['maintenance']} "
+        f"{_status_icon(impact['maintenance'], lower_is_better=True)}"
+    )
+    print(
+        f"🌱 Native fit: {impact['native_fit']} "
+        f"{_status_icon(impact['native_fit'])}"
+    )
+
+    print("\nThis week:")
+    print("1. Pick one sunny patch")
+    print("2. Place plants before digging")
+    print("3. Add compost + mulch")
+    print("4. Water deeply once")
+
+    print("\nTrack:")
+    print(f"📸 {impact['tracking_action']}")
+
+    print("\nSafety:")
+    print(f"{safety['safety_summary']}")
+    if guardrail["status"] == "PASS":
+        print("✅ Sustainability guardrail passed.")
+    else:
+        print("⚠️ Sustainability guardrail found issues.")
+
+    print("\nSoil tip:")
+    print(f"🌿 {soil['tips'] if 'tips' in soil else 'Mulch exposed soil.'}")
+
+    print()
 
 
 if __name__ == "__main__":
