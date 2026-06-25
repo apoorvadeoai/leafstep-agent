@@ -146,98 +146,351 @@ def space_intake_tool(
     }
 
 def plant_recommendation_tool(
-    sunlight: str, wants_indoor_support: bool
+    region: str,
+    space_type: str,
+    sunlight: str,
+    garden_style: str,
+    plant_count_target: int,
 ) -> dict[str, Any]:
-    """Recommends Oakville-native, pollinator-friendly plants and optional indoor support plants based on sunlight.
+    """Recommends region-friendly plants using the LeafStep guided setup.
+
+    This Day 2 version supports recommendation diversity based on:
+    - region
+    - space type
+    - sunlight
+    - garden style
+    - starter size / plant count
 
     Args:
-        sunlight: Sunlight level ('full sun', 'partial shade', 'shade').
-        wants_indoor_support: If True, includes starter indoor support plants.
+        region: City or general region, e.g. "Oakville, Ontario".
+        space_type: Normalized space type from space_intake_tool.
+        sunlight: Normalized sunlight value from space_intake_tool.
+        garden_style: Normalized garden style from space_intake_tool.
+        plant_count_target: Target number of plants from space_intake_tool.
 
     Returns:
-        A dictionary with recommended native outdoor plants and indoor support plants.
+        A dictionary with ranked plant recommendations and impact-friendly metadata.
     """
-    sun_lower = sunlight.lower().strip()
 
-    # Curated Oakville / Ontario native plants dataset matching light profiles
-    native_database = {
-        "full sun": [
-            {
-                "common_name": "Butterfly Milkweed",
-                "scientific_name": "Asclepias tuberosa",
-                "benefits": "Essential host plant for Monarch butterflies; beautiful orange blossoms.",
-                "care": "Drought tolerant once established; requires well-drained soil.",
-            },
-            {
-                "common_name": "Wild Bergamot",
-                "scientific_name": "Monarda fistulosa",
-                "benefits": "Attracts native bees, bumblebees, and butterflies; fragrant lavender flowers.",
-                "care": "Low maintenance; spreads gently by rhizomes.",
-            },
-            {
-                "common_name": "Black-eyed Susan",
-                "scientific_name": "Rudbeckia hirta",
-                "benefits": "Highly attractive to butterflies and bees; long bloom season.",
-                "care": "Extremely hardy; handles dry soil well.",
-            },
-        ],
-        "partial shade": [
-            {
-                "common_name": "Wild Columbine",
-                "scientific_name": "Aquilegia canadensis",
-                "benefits": "Nectar source for early-season hummingbirds and bees.",
-                "care": "Prefers moist, well-drained soils; self-seeds readily.",
-            },
-            {
-                "common_name": "Wild Geranium",
-                "scientific_name": "Geranium maculatum",
-                "benefits": "Supports specialized native bees; soft pink-lavender flowers.",
-                "care": "Easy to grow; tolerates clay soil.",
-            },
-        ],
-        "shade": [
-            {
-                "common_name": "Wild Columbine",
-                "scientific_name": "Aquilegia canadensis",
-                "benefits": "Thrives in shade; attractive red/yellow flowers for pollinators.",
-                "care": "Low-maintenance; handles tree root competition.",
-            },
-            {
-                "common_name": "Blue Wood Aster",
-                "scientific_name": "Symphyotrichum cordifolium",
-                "benefits": "Late fall nectar source for migrating butterflies and bees.",
-                "care": "Thrives in dry shade; very resilient.",
-            },
-        ],
-    }
+    def _clean(value: str) -> str:
+        return value.strip().lower()
 
-    # Select outdoor plants based on sunlight
-    outdoor_recs = native_database.get(sun_lower, native_database["partial shade"])
+    normalized_region = _clean(region)
+    normalized_space = _clean(space_type)
+    normalized_sunlight = _clean(sunlight)
+    normalized_style = _clean(garden_style)
 
-    # Select indoor support plants (for beginner-friendly indoor green addition)
-    indoor_recs = []
-    if wants_indoor_support:
-        indoor_recs = [
-            {
-                "common_name": "Spider Plant",
-                "scientific_name": "Chlorophytum comosum",
-                "benefits": "Excellent air purifier, pet-friendly, produces 'pups' that are easy to propagate.",
-                "care": "Indirect light; water when top inch of soil is dry.",
-            },
-            {
-                "common_name": "Golden Pothos",
-                "scientific_name": "Epipremnum aureum",
-                "benefits": "Extremely resilient green vine; thrives in low-light indoor spaces.",
-                "care": "Water occasionally; tolerates neglect.",
-            },
-        ]
+    plant_catalog = [
+        {
+            "common_name": "Wild Bergamot",
+            "scientific_name": "Monarda fistulosa",
+            "plant_type": "flower",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun", "part_sun"],
+            "space_fit": ["backyard", "front_yard", "community_garden", "balcony_patio", "side_yard_strip"],
+            "garden_style": ["flowers", "balanced", "surprise_me"],
+            "pollinator_support": "High",
+            "water_need": "Low",
+            "maintenance": "Low",
+            "native_fit": "Strong",
+            "why": "Native flower that supports bees, butterflies, and a long summer bloom.",
+        },
+        {
+            "common_name": "Black-eyed Susan",
+            "scientific_name": "Rudbeckia hirta",
+            "plant_type": "flower",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun", "part_sun"],
+            "space_fit": ["backyard", "front_yard", "community_garden", "balcony_patio", "side_yard_strip"],
+            "garden_style": ["flowers", "balanced", "surprise_me"],
+            "pollinator_support": "High",
+            "water_need": "Low",
+            "maintenance": "Low",
+            "native_fit": "Strong",
+            "why": "Hardy native-style flower with a long bloom season and strong pollinator value.",
+        },
+        {
+            "common_name": "Purple Coneflower",
+            "scientific_name": "Echinacea purpurea",
+            "plant_type": "flower",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun", "part_sun"],
+            "space_fit": ["backyard", "front_yard", "community_garden", "balcony_patio"],
+            "garden_style": ["flowers", "balanced", "surprise_me"],
+            "pollinator_support": "High",
+            "water_need": "Low",
+            "maintenance": "Low",
+            "native_fit": "Good",
+            "why": "A tough flowering plant that brings color, seed heads, and pollinator visits.",
+        },
+        {
+            "common_name": "New England Aster",
+            "scientific_name": "Symphyotrichum novae-angliae",
+            "plant_type": "flower",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun", "part_sun"],
+            "space_fit": ["backyard", "front_yard", "community_garden", "side_yard_strip"],
+            "garden_style": ["flowers", "balanced", "surprise_me"],
+            "pollinator_support": "High",
+            "water_need": "Low",
+            "maintenance": "Low",
+            "native_fit": "Strong",
+            "why": "Late-season native bloom that helps pollinators when many flowers are finished.",
+        },
+        {
+            "common_name": "Butterfly Milkweed",
+            "scientific_name": "Asclepias tuberosa",
+            "plant_type": "flower",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun"],
+            "space_fit": ["backyard", "front_yard", "community_garden"],
+            "garden_style": ["flowers", "balanced"],
+            "pollinator_support": "High",
+            "water_need": "Low",
+            "maintenance": "Medium",
+            "native_fit": "Strong",
+            "why": "Important monarch-supporting plant with bright flowers; safety filter should handle pet/kid use.",
+        },
+        {
+            "common_name": "Dense Blazing Star",
+            "scientific_name": "Liatris spicata",
+            "plant_type": "flower",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun"],
+            "space_fit": ["backyard", "front_yard", "community_garden"],
+            "garden_style": ["flowers", "balanced"],
+            "pollinator_support": "High",
+            "water_need": "Medium",
+            "maintenance": "Low",
+            "native_fit": "Strong",
+            "why": "Tall purple flower spikes add visual drama and attract butterflies.",
+        },
+        {
+            "common_name": "Canada Anemone",
+            "scientific_name": "Anemone canadensis",
+            "plant_type": "flower",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["part_sun", "mostly_shade"],
+            "space_fit": ["backyard", "side_yard_strip", "community_garden"],
+            "garden_style": ["flowers", "balanced", "leafy"],
+            "pollinator_support": "Medium",
+            "water_need": "Medium",
+            "maintenance": "Low",
+            "native_fit": "Strong",
+            "why": "Soft white flowers for part-sun spaces and naturalized garden edges.",
+        },
+        {
+            "common_name": "Wild Ginger",
+            "scientific_name": "Asarum canadense",
+            "plant_type": "leafy",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["mostly_shade", "part_sun"],
+            "space_fit": ["backyard", "side_yard_strip", "community_garden"],
+            "garden_style": ["leafy", "balanced", "surprise_me"],
+            "pollinator_support": "Low",
+            "water_need": "Low",
+            "maintenance": "Low",
+            "native_fit": "Strong",
+            "why": "Native groundcover that creates a low-maintenance leafy carpet in shade.",
+        },
+        {
+            "common_name": "Foamflower",
+            "scientific_name": "Tiarella cordifolia",
+            "plant_type": "leafy",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["mostly_shade", "part_sun"],
+            "space_fit": ["backyard", "side_yard_strip", "community_garden", "balcony_patio"],
+            "garden_style": ["leafy", "flowers", "balanced", "surprise_me"],
+            "pollinator_support": "Medium",
+            "water_need": "Medium",
+            "maintenance": "Low",
+            "native_fit": "Good",
+            "why": "Compact leafy plant with delicate blooms, good for shade and containers.",
+        },
+        {
+            "common_name": "Ostrich Fern",
+            "scientific_name": "Matteuccia struthiopteris",
+            "plant_type": "leafy",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["mostly_shade", "part_sun"],
+            "space_fit": ["backyard", "side_yard_strip", "community_garden"],
+            "garden_style": ["leafy", "balanced"],
+            "pollinator_support": "Low",
+            "water_need": "Medium",
+            "maintenance": "Low",
+            "native_fit": "Strong",
+            "why": "Large native fern that adds lush texture in shady spaces.",
+        },
+        {
+            "common_name": "Pennsylvania Sedge",
+            "scientific_name": "Carex pensylvanica",
+            "plant_type": "leafy",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["mostly_shade", "part_sun"],
+            "space_fit": ["backyard", "side_yard_strip", "front_yard"],
+            "garden_style": ["leafy", "balanced", "surprise_me"],
+            "pollinator_support": "Low",
+            "water_need": "Low",
+            "maintenance": "Low",
+            "native_fit": "Strong",
+            "why": "Soft grass-like native groundcover that reduces bare soil and mowing.",
+        },
+        {
+            "common_name": "Little Bluestem",
+            "scientific_name": "Schizachyrium scoparium",
+            "plant_type": "grass",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun"],
+            "space_fit": ["backyard", "front_yard", "side_yard_strip", "community_garden", "balcony_patio"],
+            "garden_style": ["leafy", "balanced", "surprise_me"],
+            "pollinator_support": "Medium",
+            "water_need": "Low",
+            "maintenance": "Low",
+            "native_fit": "Strong",
+            "why": "Hardy native grass that adds structure, seed heads, and low-water texture.",
+        },
+        {
+            "common_name": "Switchgrass",
+            "scientific_name": "Panicum virgatum",
+            "plant_type": "grass",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun", "part_sun"],
+            "space_fit": ["backyard", "front_yard", "community_garden", "side_yard_strip"],
+            "garden_style": ["leafy", "balanced"],
+            "pollinator_support": "Medium",
+            "water_need": "Low",
+            "maintenance": "Low",
+            "native_fit": "Strong",
+            "why": "Durable native grass that supports structure and habitat with little fuss.",
+        },
+        {
+            "common_name": "Serviceberry",
+            "scientific_name": "Amelanchier canadensis",
+            "plant_type": "fruit",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun", "part_sun"],
+            "space_fit": ["backyard", "front_yard", "community_garden"],
+            "garden_style": ["fruits_edible", "balanced", "surprise_me"],
+            "pollinator_support": "High",
+            "water_need": "Medium",
+            "maintenance": "Medium",
+            "native_fit": "Strong",
+            "why": "Native shrub/tree with spring flowers, berries, and bird value.",
+        },
+        {
+            "common_name": "Wild Strawberry",
+            "scientific_name": "Fragaria virginiana",
+            "plant_type": "fruit",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun", "part_sun"],
+            "space_fit": ["backyard", "front_yard", "community_garden", "balcony_patio", "side_yard_strip"],
+            "garden_style": ["fruits_edible", "balanced", "surprise_me"],
+            "pollinator_support": "Medium",
+            "water_need": "Low",
+            "maintenance": "Low",
+            "native_fit": "Strong",
+            "why": "Native edible groundcover that works in small patches and containers.",
+        },
+        {
+            "common_name": "Highbush Blueberry",
+            "scientific_name": "Vaccinium corymbosum",
+            "plant_type": "fruit",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun", "part_sun"],
+            "space_fit": ["backyard", "front_yard", "community_garden", "balcony_patio"],
+            "garden_style": ["fruits_edible", "balanced"],
+            "pollinator_support": "Medium",
+            "water_need": "Medium",
+            "maintenance": "Medium",
+            "native_fit": "Good",
+            "why": "Edible berries plus spring flowers, best where soil can be kept acidic.",
+        },
+        {
+            "common_name": "Red Raspberry",
+            "scientific_name": "Rubus idaeus",
+            "plant_type": "fruit",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun", "part_sun"],
+            "space_fit": ["backyard", "community_garden"],
+            "garden_style": ["fruits_edible"],
+            "pollinator_support": "Medium",
+            "water_need": "Medium",
+            "maintenance": "Medium",
+            "native_fit": "Good",
+            "why": "Fruit-producing cane that supports pollinators but needs space and pruning.",
+        },
+        {
+            "common_name": "Elderberry",
+            "scientific_name": "Sambucus canadensis",
+            "plant_type": "fruit",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun", "part_sun"],
+            "space_fit": ["backyard", "community_garden"],
+            "garden_style": ["fruits_edible", "balanced"],
+            "pollinator_support": "High",
+            "water_need": "Medium",
+            "maintenance": "Medium",
+            "native_fit": "Strong",
+            "why": "Native shrub with flowers and berries; better for larger outdoor spaces.",
+        },
+    ]
+
+    def _score_plant(plant: dict[str, Any]) -> int:
+        score = 0
+
+        if any(region_word in normalized_region for region_word in plant["region_fit"]):
+            score += 3
+        if normalized_sunlight in plant["sunlight"]:
+            score += 4
+        if normalized_space in plant["space_fit"]:
+            score += 3
+        if normalized_style in plant["garden_style"]:
+            score += 4
+
+        if plant["pollinator_support"] == "High":
+            score += 2
+        elif plant["pollinator_support"] == "Medium":
+            score += 1
+
+        if plant["water_need"] == "Low":
+            score += 2
+        elif plant["water_need"] == "Medium":
+            score += 1
+
+        if plant["maintenance"] == "Low":
+            score += 2
+        elif plant["maintenance"] == "Medium":
+            score += 1
+
+        if plant["native_fit"] == "Strong":
+            score += 2
+        elif plant["native_fit"] == "Good":
+            score += 1
+
+        return score
+
+    ranked_plants = sorted(
+        plant_catalog,
+        key=lambda plant: _score_plant(plant),
+        reverse=True,
+    )
+
+    # Keep output useful without overwhelming the user.
+    target_count = max(2, min(int(plant_count_target), 10))
+    selected_plants = ranked_plants[:target_count]
 
     return {
-        "sunlight_profile": sun_lower,
-        "outdoor_plants": outdoor_recs,
-        "indoor_plants": indoor_recs,
+        "region": region,
+        "space_type": normalized_space,
+        "sunlight": normalized_sunlight,
+        "garden_style": normalized_style,
+        "plant_count_target": target_count,
+        "recommended_plants": selected_plants,
+        "recommendation_summary": (
+            f"{target_count} {normalized_sunlight.replace('_', ' ')} "
+            f"{normalized_style.replace('_', ' ')} picks for {normalized_space.replace('_', ' ')}."
+        ),
     }
-
 
 def soil_stewardship_tool(location: str, space_type: str) -> dict[str, Any]:
     """Provides organic soil stewardship recommendations for the given location and space type.
