@@ -20,154 +20,550 @@ soil stewardship, care planning, and sustainability guardrails.
 
 from typing import Any
 
-
 def space_intake_tool(
     location: str,
-    dimensions: str,
+    space_type: str,
     sunlight: str,
-    experience_level: str,
-    wants_indoor_support: bool,
+    garden_style: str,
+    safety_mode: str,
+    starter_size: str,
 ) -> dict[str, Any]:
-    """Validates and structures the input space information for LeafStep.
+    """Normalizes the 6-question LeafStep setup into a structured profile."""
 
-    Args:
-        location: The household location (e.g. 'Oakville, Ontario').
-        dimensions: The size and type of the space (e.g. '3x5 backyard patch').
-        sunlight: Sunlight levels ('full sun', 'partial shade', 'shade').
-        experience_level: Gardening experience level ('beginner', 'intermediate', 'advanced').
-        wants_indoor_support: Whether the user wants indoor support plants.
+    def _clean(value: str) -> str:
+        return value.strip().lower()
 
-    Returns:
-        A dictionary containing the validated and structured space profile.
-    """
-    # Standardize input values slightly
-    loc_clean = location.strip()
-    dim_clean = dimensions.strip()
-    sun_clean = sunlight.lower().strip()
-    exp_clean = experience_level.lower().strip()
+    def _normalize_space(value: str) -> str:
+        value = _clean(value)
+        if "back" in value:
+            return "backyard"
+        if "front" in value:
+            return "front_yard"
+        if "balcony" in value or "patio" in value or "container" in value:
+            return "balcony_patio"
+        if "side" in value or "strip" in value:
+            return "side_yard_strip"
+        if "community" in value:
+            return "community_garden"
+        return value or "custom_space"
 
-    # Simple size validation check (checking for a small scale space, e.g. 3x5)
-    is_small_space = any(
-        x in dim_clean for x in ["3x5", "3 x 5", "15 sq", "small", "patch", "container"]
-    )
+    def _normalize_sunlight(value: str) -> str:
+        value = _clean(value)
+        if "full" in value or "6" in value:
+            return "full_sun"
+        if "part" in value or "2" in value or "3" in value:
+            return "part_sun"
+        if "shade" in value:
+            return "mostly_shade"
+        return value or "custom_sunlight"
 
-    # We encourage small spaces for the first step
-    space_warning = ""
-    if not is_small_space:
-        space_warning = "LeafStep focuses on small, manageable spaces (like 3x5 ft) for your first step. Proceeding with caution for larger spaces."
+    def _normalize_garden_style(value: str) -> str:
+        value = _clean(value)
+        if "flower" in value:
+            return "flowers"
+        if "leaf" in value or "green" in value:
+            return "leafy"
+        if "fruit" in value or "edible" in value or "berry" in value:
+            return "fruits_edible"
+        if "balanced" in value or "mix" in value:
+            return "balanced"
+        if "surprise" in value:
+            return "surprise_me"
+        return value or "custom_style"
 
-    is_oakville = "oakville" in loc_clean.lower()
+    def _normalize_safety_mode(value: str) -> str:
+        value = _clean(value)
+        if "both" in value or ("kid" in value and ("dog" in value or "cat" in value or "pet" in value)):
+            return "pets_and_kids"
+        if "dog" in value or "cat" in value or "pet" in value:
+            return "pets"
+        if "kid" in value or "child" in value or "children" in value:
+            return "kids"
+        if "none" in value or "no" in value:
+            return "none"
+        return value or "custom_safety"
+
+    def _normalize_starter_size(value: str) -> tuple[str, int]:
+        value = _clean(value)
+        if "tiny" in value or "2" in value:
+            return "tiny", 2
+        if "small" in value or "5" in value:
+            return "small", 5
+        if "medium" in value or "10" in value:
+            return "medium", 10
+        if "large" in value or "15" in value:
+            return "large", 15
+        return "custom", 5
+
+    region = location.strip() or "Ontario"
+    patch_size, plant_count_target = _normalize_starter_size(starter_size)
+
     location_note = ""
-    if not is_oakville:
-        location_note = "LeafStep is optimized for Oakville, Ontario. Planting lists will default to Ontario Zone 6b native options."
+    if any(word in region.lower() for word in ["address", "street", "postal", "zip"]):
+        location_note = "LeafStep does not need an exact address. City or general region is enough."
 
     return {
-        "location": loc_clean,
-        "dimensions": dim_clean,
-        "sunlight": sun_clean,
-        "experience_level": exp_clean,
-        "wants_indoor_support": wants_indoor_support,
-        "is_small_space": is_small_space,
-        "space_warning": space_warning,
+        "region": region,
+        "location": region,
+        "space_type": _normalize_space(space_type),
+        "sunlight": _normalize_sunlight(sunlight),
+        "garden_style": _normalize_garden_style(garden_style),
+        "safety_mode": _normalize_safety_mode(safety_mode),
+        "patch_size": patch_size,
+        "plant_count_target": plant_count_target,
+        "exact_address_needed": False,
         "location_note": location_note,
+        "default_leafstep_goals": [
+            "pollinator_friendly",
+            "water_saving",
+            "low_maintenance",
+            "native_or_region_friendly",
+            "ecosystem_balance",
+            "lifecycle_tracking",
+        ],
         "status": "valid",
     }
 
-
 def plant_recommendation_tool(
-    sunlight: str, wants_indoor_support: bool
+    region: str,
+    space_type: str,
+    sunlight: str,
+    garden_style: str,
+    plant_count_target: int,
 ) -> dict[str, Any]:
-    """Recommends Oakville-native, pollinator-friendly plants and optional indoor support plants based on sunlight.
+    """Recommends region-friendly plants using the LeafStep guided setup."""
 
-    Args:
-        sunlight: Sunlight level ('full sun', 'partial shade', 'shade').
-        wants_indoor_support: If True, includes starter indoor support plants.
+    normalized_region = region.strip().lower()
+    normalized_space = space_type.strip().lower()
+    normalized_sunlight = sunlight.strip().lower()
+    normalized_style = garden_style.strip().lower()
 
-    Returns:
-        A dictionary with recommended native outdoor plants and indoor support plants.
-    """
-    sun_lower = sunlight.lower().strip()
+    plant_catalog = [
+        {
+            "common_name": "Wild Bergamot",
+            "scientific_name": "Monarda fistulosa",
+            "plant_type": "flower",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun", "part_sun"],
+            "space_fit": ["backyard", "front_yard", "community_garden", "balcony_patio", "side_yard_strip"],
+            "garden_style": ["flowers", "balanced", "surprise_me"],
+            "pollinator_support": "High",
+            "water_need": "Low",
+            "maintenance": "Low",
+            "native_fit": "Strong",
+            "why": "Native flower that supports bees, butterflies, and summer blooms.",
+        },
+        {
+            "common_name": "Black-eyed Susan",
+            "scientific_name": "Rudbeckia hirta",
+            "plant_type": "flower",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun", "part_sun"],
+            "space_fit": ["backyard", "front_yard", "community_garden", "balcony_patio", "side_yard_strip"],
+            "garden_style": ["flowers", "balanced", "surprise_me"],
+            "pollinator_support": "High",
+            "water_need": "Low",
+            "maintenance": "Low",
+            "native_fit": "Strong",
+            "why": "Hardy native-style flower with a long bloom season.",
+        },
+        {
+            "common_name": "Purple Coneflower",
+            "scientific_name": "Echinacea purpurea",
+            "plant_type": "flower",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun", "part_sun"],
+            "space_fit": ["backyard", "front_yard", "community_garden", "balcony_patio"],
+            "garden_style": ["flowers", "balanced", "surprise_me"],
+            "pollinator_support": "High",
+            "water_need": "Low",
+            "maintenance": "Low",
+            "native_fit": "Good",
+            "why": "Tough flowering plant with color, seed heads, and pollinator visits.",
+        },
+        {
+            "common_name": "New England Aster",
+            "scientific_name": "Symphyotrichum novae-angliae",
+            "plant_type": "flower",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun", "part_sun"],
+            "space_fit": ["backyard", "front_yard", "community_garden", "side_yard_strip"],
+            "garden_style": ["flowers", "balanced", "surprise_me"],
+            "pollinator_support": "High",
+            "water_need": "Low",
+            "maintenance": "Low",
+            "native_fit": "Strong",
+            "why": "Late-season native bloom that supports pollinators.",
+        },
+        {
+            "common_name": "Butterfly Milkweed",
+            "scientific_name": "Asclepias tuberosa",
+            "plant_type": "flower",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun"],
+            "space_fit": ["backyard", "front_yard", "community_garden"],
+            "garden_style": ["flowers", "balanced"],
+            "pollinator_support": "High",
+            "water_need": "Low",
+            "maintenance": "Medium",
+            "native_fit": "Strong",
+            "why": "Monarch-supporting flower; safety tool handles pet/kid placement.",
+        },
+        {
+            "common_name": "Dense Blazing Star",
+            "scientific_name": "Liatris spicata",
+            "plant_type": "flower",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun"],
+            "space_fit": ["backyard", "front_yard", "community_garden"],
+            "garden_style": ["flowers", "balanced"],
+            "pollinator_support": "High",
+            "water_need": "Medium",
+            "maintenance": "Low",
+            "native_fit": "Strong",
+            "why": "Purple flower spikes that attract butterflies.",
+        },
+        {
+            "common_name": "Wild Ginger",
+            "scientific_name": "Asarum canadense",
+            "plant_type": "leafy",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["mostly_shade", "part_sun"],
+            "space_fit": ["backyard", "side_yard_strip", "community_garden"],
+            "garden_style": ["leafy", "balanced", "surprise_me"],
+            "pollinator_support": "Low",
+            "water_need": "Low",
+            "maintenance": "Low",
+            "native_fit": "Strong",
+            "why": "Native groundcover for low-maintenance shade.",
+        },
+        {
+            "common_name": "Foamflower",
+            "scientific_name": "Tiarella cordifolia",
+            "plant_type": "leafy",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["mostly_shade", "part_sun"],
+            "space_fit": ["backyard", "side_yard_strip", "community_garden", "balcony_patio"],
+            "garden_style": ["leafy", "flowers", "balanced", "surprise_me"],
+            "pollinator_support": "Medium",
+            "water_need": "Medium",
+            "maintenance": "Low",
+            "native_fit": "Good",
+            "why": "Compact leafy plant with delicate blooms for shade and containers.",
+        },
+        {
+            "common_name": "Pennsylvania Sedge",
+            "scientific_name": "Carex pensylvanica",
+            "plant_type": "leafy",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["mostly_shade", "part_sun"],
+            "space_fit": ["backyard", "side_yard_strip", "front_yard"],
+            "garden_style": ["leafy", "balanced", "surprise_me"],
+            "pollinator_support": "Low",
+            "water_need": "Low",
+            "maintenance": "Low",
+            "native_fit": "Strong",
+            "why": "Grass-like native groundcover that reduces bare soil.",
+        },
+        {
+            "common_name": "Little Bluestem",
+            "scientific_name": "Schizachyrium scoparium",
+            "plant_type": "grass",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun"],
+            "space_fit": ["backyard", "front_yard", "side_yard_strip", "community_garden", "balcony_patio"],
+            "garden_style": ["leafy", "balanced", "surprise_me"],
+            "pollinator_support": "Medium",
+            "water_need": "Low",
+            "maintenance": "Low",
+            "native_fit": "Strong",
+            "why": "Hardy native grass with structure and low-water texture.",
+        },
+        {
+            "common_name": "Serviceberry",
+            "scientific_name": "Amelanchier canadensis",
+            "plant_type": "fruit",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun", "part_sun"],
+            "space_fit": ["backyard", "front_yard", "community_garden"],
+            "garden_style": ["fruits_edible", "balanced", "surprise_me"],
+            "pollinator_support": "High",
+            "water_need": "Medium",
+            "maintenance": "Medium",
+            "native_fit": "Strong",
+            "why": "Native shrub/tree with spring flowers, berries, and bird value.",
+        },
+        {
+            "common_name": "Wild Strawberry",
+            "scientific_name": "Fragaria virginiana",
+            "plant_type": "fruit",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun", "part_sun"],
+            "space_fit": ["backyard", "front_yard", "community_garden", "balcony_patio", "side_yard_strip"],
+            "garden_style": ["fruits_edible", "balanced", "surprise_me"],
+            "pollinator_support": "Medium",
+            "water_need": "Low",
+            "maintenance": "Low",
+            "native_fit": "Strong",
+            "why": "Native edible groundcover for small patches and containers.",
+        },
+        {
+            "common_name": "Highbush Blueberry",
+            "scientific_name": "Vaccinium corymbosum",
+            "plant_type": "fruit",
+            "region_fit": ["ontario", "oakville", "toronto"],
+            "sunlight": ["full_sun", "part_sun"],
+            "space_fit": ["backyard", "front_yard", "community_garden", "balcony_patio"],
+            "garden_style": ["fruits_edible", "balanced"],
+            "pollinator_support": "Medium",
+            "water_need": "Medium",
+            "maintenance": "Medium",
+            "native_fit": "Good",
+            "why": "Edible berries plus spring flowers.",
+        },
+    ]
 
-    # Curated Oakville / Ontario native plants dataset matching light profiles
-    native_database = {
-        "full sun": [
-            {
-                "common_name": "Butterfly Milkweed",
-                "scientific_name": "Asclepias tuberosa",
-                "benefits": "Essential host plant for Monarch butterflies; beautiful orange blossoms.",
-                "care": "Drought tolerant once established; requires well-drained soil.",
-            },
-            {
-                "common_name": "Wild Bergamot",
-                "scientific_name": "Monarda fistulosa",
-                "benefits": "Attracts native bees, bumblebees, and butterflies; fragrant lavender flowers.",
-                "care": "Low maintenance; spreads gently by rhizomes.",
-            },
-            {
-                "common_name": "Black-eyed Susan",
-                "scientific_name": "Rudbeckia hirta",
-                "benefits": "Highly attractive to butterflies and bees; long bloom season.",
-                "care": "Extremely hardy; handles dry soil well.",
-            },
-        ],
-        "partial shade": [
-            {
-                "common_name": "Wild Columbine",
-                "scientific_name": "Aquilegia canadensis",
-                "benefits": "Nectar source for early-season hummingbirds and bees.",
-                "care": "Prefers moist, well-drained soils; self-seeds readily.",
-            },
-            {
-                "common_name": "Wild Geranium",
-                "scientific_name": "Geranium maculatum",
-                "benefits": "Supports specialized native bees; soft pink-lavender flowers.",
-                "care": "Easy to grow; tolerates clay soil.",
-            },
-        ],
-        "shade": [
-            {
-                "common_name": "Wild Columbine",
-                "scientific_name": "Aquilegia canadensis",
-                "benefits": "Thrives in shade; attractive red/yellow flowers for pollinators.",
-                "care": "Low-maintenance; handles tree root competition.",
-            },
-            {
-                "common_name": "Blue Wood Aster",
-                "scientific_name": "Symphyotrichum cordifolium",
-                "benefits": "Late fall nectar source for migrating butterflies and bees.",
-                "care": "Thrives in dry shade; very resilient.",
-            },
-        ],
-    }
+    def _score_plant(plant: dict[str, Any]) -> int:
+        score = 0
 
-    # Select outdoor plants based on sunlight
-    outdoor_recs = native_database.get(sun_lower, native_database["partial shade"])
+        if any(region_word in normalized_region for region_word in plant["region_fit"]):
+            score += 3
+        if normalized_sunlight in plant["sunlight"]:
+            score += 4
+        if normalized_space in plant["space_fit"]:
+            score += 3
+        if normalized_style in plant["garden_style"]:
+            score += 4
+        if plant["pollinator_support"] == "High":
+            score += 2
+        elif plant["pollinator_support"] == "Medium":
+            score += 1
+        if plant["water_need"] == "Low":
+            score += 2
+        elif plant["water_need"] == "Medium":
+            score += 1
+        if plant["maintenance"] == "Low":
+            score += 2
+        elif plant["maintenance"] == "Medium":
+            score += 1
+        if plant["native_fit"] == "Strong":
+            score += 2
+        elif plant["native_fit"] == "Good":
+            score += 1
 
-    # Select indoor support plants (for beginner-friendly indoor green addition)
-    indoor_recs = []
-    if wants_indoor_support:
-        indoor_recs = [
-            {
-                "common_name": "Spider Plant",
-                "scientific_name": "Chlorophytum comosum",
-                "benefits": "Excellent air purifier, pet-friendly, produces 'pups' that are easy to propagate.",
-                "care": "Indirect light; water when top inch of soil is dry.",
-            },
-            {
-                "common_name": "Golden Pothos",
-                "scientific_name": "Epipremnum aureum",
-                "benefits": "Extremely resilient green vine; thrives in low-light indoor spaces.",
-                "care": "Water occasionally; tolerates neglect.",
-            },
-        ]
+        return score
+
+    ranked_plants = sorted(plant_catalog, key=_score_plant, reverse=True)
+    target_count = max(2, min(int(plant_count_target), 10))
+    selected_plants = ranked_plants[:target_count]
 
     return {
-        "sunlight_profile": sun_lower,
-        "outdoor_plants": outdoor_recs,
-        "indoor_plants": indoor_recs,
+        "region": region,
+        "space_type": normalized_space,
+        "sunlight": normalized_sunlight,
+        "garden_style": normalized_style,
+        "plant_count_target": target_count,
+        "recommended_plants": selected_plants,
+        "recommendation_summary": (
+            f"{target_count} {normalized_sunlight.replace('_', ' ')} "
+            f"{normalized_style.replace('_', ' ')} picks for {normalized_space.replace('_', ' ')}."
+        ),
     }
 
+def plant_safety_tool(
+    recommended_plants: list[dict[str, Any]],
+    safety_mode: str,
+    plant_count_target: int,
+) -> dict[str, Any]:
+    """Filters recommended plants using LeafStep pet/kid safety rules."""
 
+    normalized_safety = safety_mode.strip().lower()
+
+    safety_database = {
+        "Butterfly Milkweed": {
+            "pets": "careful_placement",
+            "kids": "careful_placement",
+            "pets_and_kids": "careful_placement",
+            "reason": "keep away from chewing or digging",
+        },
+        "Wild Ginger": {
+            "pets": "careful_placement",
+            "kids": "careful_placement",
+            "pets_and_kids": "careful_placement",
+            "reason": "keep away from chewing or digging",
+        },
+        "Red Raspberry": {
+            "pets": "careful_placement",
+            "kids": "careful_placement",
+            "pets_and_kids": "careful_placement",
+            "reason": "thorny canes; place away from rough play",
+        },
+        "Elderberry": {
+            "pets": "careful_placement",
+            "kids": "careful_placement",
+            "pets_and_kids": "careful_placement",
+            "reason": "plant parts need careful handling",
+        },
+    }
+
+    known_do_not_buy = [
+        {
+            "common_name": "Foxglove",
+            "reason": "toxic; do not use in pet/kid-accessible spaces",
+        },
+        {
+            "common_name": "Lily of the Valley",
+            "reason": "toxic; do not use in pet/kid-accessible spaces",
+        },
+        {
+            "common_name": "Daffodil bulbs",
+            "reason": "toxic if eaten; avoid in pet/kid-accessible spaces",
+        },
+    ]
+
+    if normalized_safety in {"none", "no special safety concern"}:
+        return {
+            "safety_mode": "none",
+            "buy_list": recommended_plants[:plant_count_target],
+            "careful_placement_list": [],
+            "do_not_buy_list": known_do_not_buy,
+            "safety_summary": "No special safety filter selected.",
+        }
+
+    buy_list = []
+    careful_placement_list = []
+
+    for plant in recommended_plants:
+        plant_name = plant.get("common_name", "")
+        safety_record = safety_database.get(plant_name)
+
+        if safety_record:
+            safety_label = safety_record.get(normalized_safety, "careful_placement")
+            reason = safety_record.get("reason", "keep away from pets/kids")
+        else:
+            safety_label = "safe_pick"
+            reason = "low-risk garden pick"
+
+        plant_with_safety = {
+            **plant,
+            "safety_label": safety_label,
+            "safety_reason": reason,
+        }
+
+        if safety_label == "safe_pick":
+            buy_list.append(plant_with_safety)
+        else:
+            careful_placement_list.append(plant_with_safety)
+
+    # If there are not enough safe picks, include careful placement options.
+    if len(buy_list) < plant_count_target:
+        needed = plant_count_target - len(buy_list)
+        buy_list.extend(careful_placement_list[:needed])
+        careful_placement_list = careful_placement_list[needed:]
+
+    if normalized_safety == "pets":
+        summary = "Pet-safe mode on. Dangerous plants removed."
+    elif normalized_safety == "kids":
+        summary = "Kid-safe mode on. Dangerous plants removed."
+    elif normalized_safety == "pets_and_kids":
+        summary = "Strict safety mode on. Dangerous plants removed."
+    else:
+        summary = "Safety filter applied."
+
+    return {
+        "safety_mode": normalized_safety,
+        "buy_list": buy_list[:plant_count_target],
+        "careful_placement_list": careful_placement_list,
+        "do_not_buy_list": known_do_not_buy,
+        "safety_summary": summary,
+    }
+
+def impact_tracking_tool(
+    buy_list: list[dict[str, Any]],
+    careful_placement_list: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Creates simple LeafStep impact badges and lifecycle tracking guidance."""
+
+    selected_plants = buy_list + careful_placement_list
+
+    if not selected_plants:
+        return {
+            "pollinator_support": "Low",
+            "water_need": "High",
+            "maintenance": "High",
+            "native_fit": "Weak",
+            "biodiversity_value": "Low",
+            "tracking_action": "Add your first plant to start tracking growth.",
+        }
+
+    pollinator_values = [
+        plant.get("pollinator_support", "Low") for plant in selected_plants
+    ]
+    water_values = [
+        plant.get("water_need", "Medium") for plant in selected_plants
+    ]
+    maintenance_values = [
+        plant.get("maintenance", "Medium") for plant in selected_plants
+    ]
+    native_values = [
+        plant.get("native_fit", "Good") for plant in selected_plants
+    ]
+
+    high_pollinator_count = pollinator_values.count("High")
+    medium_pollinator_count = pollinator_values.count("Medium")
+    low_water_count = water_values.count("Low")
+    medium_water_count = water_values.count("Medium")
+    low_maintenance_count = maintenance_values.count("Low")
+    medium_maintenance_count = maintenance_values.count("Medium")
+    strong_native_count = native_values.count("Strong")
+    good_native_count = native_values.count("Good")
+
+    half_count = max(1, len(selected_plants) // 2)
+
+    if high_pollinator_count >= half_count:
+        pollinator_support = "High"
+    elif high_pollinator_count + medium_pollinator_count >= half_count:
+        pollinator_support = "Medium"
+    else:
+        pollinator_support = "Low"
+
+    if low_water_count >= half_count:
+        water_need = "Low"
+    elif low_water_count + medium_water_count >= half_count:
+        water_need = "Medium"
+    else:
+        water_need = "High"
+
+    if low_maintenance_count >= half_count:
+        maintenance = "Low"
+    elif low_maintenance_count + medium_maintenance_count >= half_count:
+        maintenance = "Medium"
+    else:
+        maintenance = "High"
+
+    if strong_native_count >= half_count:
+        native_fit = "Strong"
+    elif strong_native_count + good_native_count >= half_count:
+        native_fit = "Good"
+    else:
+        native_fit = "Weak"
+
+    if pollinator_support == "High" and native_fit in {"Strong", "Good"}:
+        biodiversity_value = "High"
+    elif pollinator_support == "Medium" or native_fit == "Good":
+        biodiversity_value = "Medium"
+    else:
+        biodiversity_value = "Low"
+
+    return {
+        "pollinator_support": pollinator_support,
+        "water_need": water_need,
+        "maintenance": maintenance,
+        "native_fit": native_fit,
+        "biodiversity_value": biodiversity_value,
+        "tracking_action": "Take a first photo and log first bloom or new growth later.",
+    }
+    
 def soil_stewardship_tool(location: str, space_type: str) -> dict[str, Any]:
     """Provides organic soil stewardship recommendations for the given location and space type.
 
