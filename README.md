@@ -29,7 +29,7 @@ The default LeafStep goal is always:
 
 ---
 
-## Day 1–3 Progress
+## Day 1–4 Progress
 
 ### Day 1 — ADK Agent Foundation
 
@@ -70,6 +70,26 @@ Completed:
 * Validated impact badges use simple bands.
 * Updated `demo.py` for the Day 2/Day 3 guided LeafStep workflow.
 
+## Day 4: LLM-backed ADK Flow + Skills
+
+Day 4 focused on testing the existing ADK/Gemini agent flow, reducing demo token usage, and adding project-specific skills for review and submission readiness.
+
+Completed:
+- Tested LeafStep in ADK Web with a Gemini-backed prompt flow
+- Confirmed the agent accepts user input and returns a practical first-step plan
+- Switched to a lightweight Gemini model for cost-aware local testing
+- Added `.agents/skills/leafstep-code-review/`
+- Added `.agents/skills/leafstep-submission-review/`
+- Added `docs/skill_usage.md`
+- Added `validate_day4.py`
+
+Run locally:
+
+```bash
+export GEMINI_API_KEY="your_api_key_here"
+uv run adk web --port 8000
+
+Prompt: I live in Oakville. I have a small sunny 3x5 backyard patch. I am a beginner and want to help pollinators. Give me one simple first-week plan.
 ---
 
 ## Project Structure
@@ -421,3 +441,5 @@ LeafStep can grow into a social plant community where users track:
 * Maintenance effort
 
 Over time, these observations could help communities understand which native or region-friendly plants thrive in their area and how small green spaces contribute to biodiversity recovery.
+
+LeafStep uses a lightweight Gemini Flash-Lite model for the local demo to reduce token usage while preserving fast tool-orchestrated responses.
