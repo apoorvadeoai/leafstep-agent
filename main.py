@@ -894,7 +894,7 @@ def plan(
     }
 
       {
-       f"<p><strong>Recommendation:</strong> {safe_text(safety_data.get('recommendation'))}</p>"
+        f"<p><strong>Recommendation:</strong> {safe_text(safety_data.get('recommendation'))}</p>"
         if safety_data.get("recommendation")
         else ""
     }
