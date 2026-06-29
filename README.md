@@ -1,117 +1,407 @@
 # LeafStep Agent
 
-LeafStep is an AI habitat coach for Oakville, Ontario households.
+**LeafStep Agent** is an AI agent that helps households turn a small outdoor space into a safe, low-maintenance, pollinator-friendly microhabitat.
 
-It helps people take one small, practical first step toward creating pollinator-friendly, low-maintenance, soil-supporting green spaces using native or region-friendly plants.
-
-This project was built for the **Google 5-Day Gen AI / Vibe Coding Capstone** using the **Google Agent Development Kit (ADK)**, `agents-cli`, local tools, project skills, validation scripts, and a Cloud Run deployment.
-
-LeafStep is intentionally scoped. It does not try to be a generic global gardening app. The current recommendations are optimized for **Oakville / Ontario conditions**.
+The project was built for the **Google x Kaggle 5-Day AI Agents: Intensive Vibe Coding Capstone**. It demonstrates how an agent can guide a beginner from vague gardening intent to a practical first action plan using structured intake, tool orchestration, safety guardrails, and deployment-ready architecture.
 
 ---
 
-## Project Goal
+## Problem
 
-LeafStep helps users improve everyday spaces such as:
+Many households want to do something positive for the environment but do not know where to start.
 
-* Small backyard patches
-* Front yard patches
-* Balconies / patios
-* Side yard strips
-* Container gardens
-* Small community garden plots
+Gardening advice can be overwhelming:
 
-The default LeafStep goal is always:
+* Which plants work in my region?
+* What fits a small backyard, balcony, or side strip?
+* What is safe if I have pets or kids?
+* What should I do in the first 30 days?
+* How do I avoid invasive plants or chemical-heavy shortcuts?
 
-* Support pollinators
-* Reduce exposed soil
-* Encourage native or region-friendly plants
-* Lower maintenance burden
-* Reduce synthetic chemical use
-* Help households take one realistic first step
+LeafStep focuses on a small, realistic starting point: **one tiny household patch**.
 
-Instead of producing long gardening reports, LeafStep guides the user toward a concise starter plan: what to plant, what to avoid, what safety checks apply, what impact it creates, and what to do this week.
+Instead of telling users to redesign their whole yard, LeafStep helps them take one practical first step.
 
 ---
 
-## Current Demo Scope
+## Solution
 
-The public Cloud Run demo is a lightweight, interactive version of LeafStep that works without live Gemini API credits.
+LeafStep Agent collects a simple 6-question intake and turns it into a beginner-friendly microhabitat plan.
 
-It asks only the inputs that matter for the current demo:
+The agent can:
 
-1. Location — fixed as **Oakville, Ontario**
-2. Space size/type
-3. Sunlight
-4. Whether pets or small children are present
-
-The deployed demo uses LeafStep’s deterministic local tools so reviewers can test the product flow without depending on API quota.
-
-The full ADK/Gemini agent is available in `app/agent.py` and can be run locally with a Gemini API key.
+* Normalize the user's space, sunlight, safety needs, and starter size
+* Recommend region-friendly plants for Oakville / Ontario-style conditions
+* Apply pet/kid safety filtering
+* Avoid unnecessary exact address collection
+* Provide simple impact badges
+* Suggest organic soil stewardship actions
+* Generate a 30-day beginner care plan
+* Run sustainability guardrails against invasive plants and synthetic inputs
 
 ---
 
-## Day 1–5 Progress
+## Why Agents?
 
-### Day 1 — ADK Agent Foundation
+LeafStep is more than a static plant list.
 
-Completed:
+An agent is useful here because the user’s needs are contextual:
 
-* Created the LeafStep ADK agent structure.
-* Added the first ecosystem tools.
-* Built a local `demo.py` flow.
-* Verified the project can run without Gemini/API calls for the deterministic demo path.
-* Established the capstone direction: practical native/pollinator-friendly habitat planning.
+* A backyard is different from a balcony
+* Full sun is different from shade
+* A dog/kid household needs extra safety checks
+* A beginner needs a simpler plan than an experienced gardener
+* A privacy-aware assistant should not require an exact home address
 
-### Day 2 — Guided Recommendations, Safety, and Impact
+LeafStep uses tools to break the workflow into reliable steps instead of asking the LLM to invent everything from scratch.
 
-Completed:
+---
 
-* Replaced open-ended responses with a structured recommendation workflow.
-* Added richer plant recommendation logic.
-* Added plant metadata across flowers, leafy plants, grasses, and edible/fruiting plants.
-* Added pet/kid plant safety filtering through `plant_safety_tool`.
-* Added “Plants to buy / Careful placement / Avoid” safety output.
-* Replaced numeric habitat scores with simple impact badges.
-* Updated the agent instruction to produce short, action-card style answers.
+## Architecture
 
-### Day 3 — Validation and Judge-Ready Demo
+```mermaid
+flowchart TD
+    User[User] --> Agent[LeafStep ADK Agent]
 
-Completed:
+    Agent --> Intake[space_intake_tool]
+    Agent --> Recommend[plant_recommendation_tool]
+    Agent --> Safety[plant_safety_tool]
+    Agent --> Impact[impact_tracking_tool]
+    Agent --> Soil[soil_stewardship_tool]
+    Agent --> Care[care_plan_tool]
+    Agent --> Guardrail[sustainability_guardrail_tool]
 
-* Added `validate_day3.py` to test core tool behavior.
-* Validated setup normalization.
-* Validated plant recommendations return useful results.
-* Validated dangerous plants do not appear in the buy list.
-* Validated impact badges use simple bands.
-* Updated `demo.py` for the guided LeafStep workflow.
+    Intake --> Privacy[Privacy Guardrail]
+    Recommend --> Plants[Region-Friendly Plant Catalog]
+    Safety --> Household[Pet/Kid Safety Rules]
+    Guardrail --> Eco[Invasive Plant + Chemical Input Checks]
+```
 
-### Day 4 — LLM-backed ADK Flow and Skills
+---
 
-Completed:
+## Core Tools
 
-* Tested LeafStep in ADK Web with a Gemini-backed prompt flow.
-* Confirmed the agent accepts user input and returns a practical first-step plan.
-* Reduced token usage in the agent instruction.
-* Added project-specific skills:
+### `space_intake_tool`
 
-  * `.agents/skills/leafstep-code-review/`
-  * `.agents/skills/leafstep-submission-review/`
-* Added `docs/skill_usage.md`.
-* Added `docs/workshop_concepts.md`.
-* Added `validate_day4.py`.
+Normalizes the 6-question setup:
 
-### Day 5 — Cloud Run Deployment and Final Capstone Package
+* Location
+* Space type
+* Sunlight
+* Garden style
+* Safety mode
+* Starter size
 
-Completed:
+It also includes a privacy guardrail. If a user enters an exact-address-looking location, LeafStep generalizes it to a city/region.
 
-* Added `main.py` as a lightweight FastAPI Cloud Run demo.
-* Added `requirements-cloudrun.txt`.
-* Updated `Dockerfile` for Cloud Run deployment.
-* Added `validate_day5.py`.
-* Added deployment-ready documentation.
-* Preserved the full ADK/Gemini agent in `app/agent.py`.
-* Created a public demo path that can run without consuming Gemini credits.
+Example:
+
+```text
+Input: 123 Maple Street, Oakville
+Output region: Oakville
+privacy_status: generalize_location
+```
+
+### `plant_recommendation_tool`
+
+Recommends plants based on:
+
+* Region
+* Space type
+* Sunlight
+* Garden style
+* Starter size
+
+### `plant_safety_tool`
+
+Applies pet/kid safety rules and returns:
+
+* Safe buy list
+* Careful placement list
+* Do-not-buy list
+
+### `impact_tracking_tool`
+
+Creates simple impact badges:
+
+* Pollinator support
+* Water need
+* Maintenance
+* Native fit
+* Biodiversity value
+* Tracking action
+
+### `soil_stewardship_tool`
+
+Provides organic soil preparation guidance, including compost, mulch, and low-disturbance soil practices.
+
+### `care_plan_tool`
+
+Creates a beginner-friendly 30-day care plan.
+
+### `sustainability_guardrail_tool`
+
+Checks proposed plants and inputs against ecological safety rules.
+
+It can block:
+
+* Invasive plants such as English ivy
+* Synthetic inputs such as Roundup, glyphosate, and chemical pesticides
+
+---
+
+## Safety and Guardrails
+
+LeafStep includes three practical guardrail themes.
+
+### 1. Privacy Guardrail
+
+LeafStep does not need a user’s exact home address.
+
+If a user enters something like:
+
+```text
+123 Maple Street, Oakville
+```
+
+the tool generalizes the location to:
+
+```text
+Oakville
+```
+
+and returns a privacy note.
+
+### 2. Household Safety Guardrail
+
+If the user has pets or kids, LeafStep applies safety filtering.
+
+It separates plants into:
+
+* Safe picks
+* Careful placement options
+* Do-not-buy plants
+
+### 3. Sustainability Guardrail
+
+LeafStep checks against invasive plants and synthetic chemical inputs.
+
+This keeps the agent aligned with the project goal: helping users create small ecological improvements without causing accidental harm.
+
+---
+
+## Course Concepts Demonstrated
+
+This project demonstrates multiple concepts from the Google/Kaggle AI Agents course.
+
+| Concept                | Where it appears                                                          |
+| ---------------------- | ------------------------------------------------------------------------- |
+| ADK agent              | `app/agent.py`                                                            |
+| Tool orchestration     | `app/tools.py`                                                            |
+| Gemini / real LLM demo | `run_agent_demo.py`                                                       |
+| Guardrails / safety    | `space_intake_tool`, `plant_safety_tool`, `sustainability_guardrail_tool` |
+| Agents CLI skills      | `.agents/skills/`                                                         |
+| Deployability          | `Dockerfile`, `main.py`, Cloud Run-ready app structure                    |
+| Testing                | `tests/unit/test_tools.py`                                                |
+
+---
+
+## Agents CLI Skills
+
+LeafStep uses project-scoped skills as development-time quality gates.
+
+### `leafstep-code-review`
+
+Checks:
+
+* ADK structure
+* Tool orchestration
+* Guardrail usage
+* Tests
+* README quality
+* Token efficiency
+* Secret safety
+
+### `leafstep-submission-review`
+
+Checks:
+
+* Kaggle writeup clarity
+* Demo strength
+* Architecture explanation
+* ADK/Gemini usage
+* Skills usage
+* Sustainability impact
+* Safety guardrails
+* Limitations
+
+These skills do not run inside the user-facing product. They support repeatable review workflows while building and preparing the capstone submission.
+
+---
+
+## Demo Options
+
+LeafStep has two demo paths.
+
+### 1. Local deterministic demo
+
+This runs the no-LLM version of the workflow.
+
+```bash
+uv run python demo.py
+```
+
+Use this when you want a predictable local demo without Gemini credentials.
+
+### 2. Real ADK/Gemini demo
+
+This runs a real ADK/Gemini tool-calling trace and then a deterministic full tool-chain demo.
+
+Set your Gemini API key first:
+
+```bash
+export GEMINI_API_KEY="your_api_key_here"
+export GOOGLE_GENAI_USE_ENTERPRISE=FALSE
+```
+
+Then run:
+
+```bash
+uv run python run_agent_demo.py
+```
+
+This demo shows:
+
+* Real ADK/Gemini tool call
+* Privacy guardrail
+* Plant recommendations
+* Pet/kid safety filtering
+* Impact badges
+* Soil guidance
+* 30-day care plan
+* Sustainability guardrail
+
+---
+
+## Setup
+
+### 1. Clone the repo
+
+```bash
+git clone https://github.com/apoorvadeoai/leafstep-agent.git
+cd leafstep-agent
+```
+
+### 2. Install dependencies
+
+```bash
+uv sync
+```
+
+### 3. Run formatting and lint checks
+
+```bash
+uv run ruff format .
+uv run ruff check . --fix
+```
+
+### 4. Run unit tests
+
+```bash
+uv run pytest tests/unit
+```
+
+### 5. Run local demo
+
+```bash
+uv run python demo.py
+```
+
+### 6. Run ADK/Gemini demo
+
+```bash
+export GEMINI_API_KEY="your_api_key_here"
+export GOOGLE_GENAI_USE_ENTERPRISE=FALSE
+uv run python run_agent_demo.py
+```
+
+---
+
+## Testing
+
+Unit tests cover:
+
+* Exact-address privacy guardrail
+* Oakville plant recommendation flow
+* Pet/kid safety filtering
+* Invasive plant blocking
+* Synthetic input blocking
+* Safe native plan pass case
+
+Run:
+
+```bash
+uv run pytest tests/unit
+```
+
+Note: Some integration tests require Google credentials because they call the real ADK/Gemini agent.
+
+---
+
+## Example Scenario
+
+User input:
+
+```text
+I live at 123 Maple Street, Oakville.
+I have a small backyard patch with part sun.
+I have two kids and a dog.
+I want low-maintenance pollinator-friendly flowers.
+```
+
+LeafStep output:
+
+* Generalizes location to Oakville
+* Recommends part-sun pollinator plants
+* Applies pet/kid safety filtering
+* Returns simple impact badges
+* Suggests compost and mulch-based soil prep
+* Creates a 30-day care plan
+
+---
+
+## Example Recommended Plants
+
+For an Oakville backyard patch with part sun and flower preference, LeafStep may recommend:
+
+* Wild Bergamot
+* Black-eyed Susan
+* New England Aster
+* Purple Coneflower
+* Foamflower
+
+The final list depends on the intake profile and safety filtering.
+
+---
+
+## Deployment
+
+LeafStep is designed to be deployable using a containerized app structure.
+
+Relevant files:
+
+* `Dockerfile`
+* `main.py`
+* `requirements-cloudrun.txt`
+* `app/fast_api_app.py`
+
+A Cloud Run deployment can be added using the Google Cloud project and Gemini configuration.
+
+Important:
+
+Do not commit API keys or secrets to the repository.
+
+Use environment variables for credentials.
 
 ---
 
@@ -120,10 +410,15 @@ Completed:
 ```text
 leafstep-agent/
 ├── app/
-│   ├── __init__.py
 │   ├── agent.py
 │   ├── tools.py
+│   ├── fast_api_app.py
 │   └── app_utils/
+├── tests/
+│   ├── unit/
+│   │   └── test_tools.py
+│   ├── integration/
+│   └── eval/
 ├── .agents/
 │   └── skills/
 │       ├── leafstep-code-review/
@@ -132,396 +427,47 @@ leafstep-agent/
 │   ├── skill_usage.md
 │   └── workshop_concepts.md
 ├── demo.py
+├── run_agent_demo.py
 ├── main.py
-├── validate_day3.py
-├── validate_day4.py
-├── validate_day5.py
 ├── Dockerfile
-├── requirements.txt
-├── requirements-cloudrun.txt
 ├── pyproject.toml
-├── uv.lock
 └── README.md
 ```
 
 ---
 
-## LeafStep Tools
+## Limitations
 
-LeafStep uses tools instead of relying on one free-form answer. This keeps the workflow structured, testable, and easier to improve.
+LeafStep is a capstone prototype.
 
-### 1. `space_intake_tool`
+Current limitations:
 
-Normalizes the user’s space information into a structured profile.
-
-It handles:
-
-* Location
-* Space type or dimensions
-* Sunlight
-* Experience level when needed
-* Indoor support preference when needed
-
-For the current Cloud Run demo, location is fixed to **Oakville, Ontario**, experience defaults to `beginner`, and indoor support defaults to `False`.
-
-### 2. `plant_recommendation_tool`
-
-Recommends suitable plants based on sunlight and user context.
-
-The plant catalog includes options across:
-
-* Native / region-friendly flowers
-* Leafy or texture plants
-* Native grasses
-* Edible / fruiting plants
-* Shade-friendly plants
-* Balcony or patio-friendly plants
-
-### 3. `plant_safety_tool`
-
-Applies pet and child safety rules.
-
-It separates recommendations into:
-
-* Plants to buy
-* Careful placement
-* Avoid
-
-Dangerous or higher-risk plants should not appear in the main buy list when pets or children are present.
-
-### 4. `impact_tracking_tool`
-
-Creates simple impact badges instead of numeric scores.
-
-LeafStep can summarize:
-
-* Pollinator support
-* Water need
-* Maintenance level
-* Native fit
-* Tracking action
-
-This helps users understand the value of a small first step without overwhelming them.
-
-### 5. `soil_stewardship_tool`
-
-Provides soil-supporting actions such as:
-
-* Adding compost
-* Mulching exposed soil
-* Avoiding synthetic chemicals
-* Supporting moisture retention
-* Improving soil structure over time
-
-### 6. `care_plan_tool`
-
-Generates simple care guidance for selected plants.
-
-By default, LeafStep summarizes the first-week care steps. It should only provide a full 30-day plan if the user explicitly asks.
-
-### 7. `sustainability_guardrail_tool`
-
-Checks recommendations against ecological safety rules.
-
-It blocks or flags:
-
-* Known invasive species
-* Synthetic pesticides
-* Synthetic herbicides
-* Non-organic soil inputs
-
-This guardrail should run before final recommendations are presented.
+* Plant catalog is intentionally small and focused on Oakville/Ontario-style examples
+* Recommendations should be verified before planting
+* The agent does not replace professional horticultural, ecological, medical, or veterinary advice
+* Pet/kid safety is conservative but not exhaustive
+* Local nursery inventory is not currently checked
+* MCP is not included in the current version and is a possible future enhancement
 
 ---
 
-## Example Output
+## Future Improvements
 
-```text
-🌿 LeafStep Starter Plan
+Potential next steps:
 
-Space:
-Oakville, Ontario
-Small sunny backyard patch
-Pets or small children: Yes
-
-Best next step:
-Start a small pollinator patch with beginner-friendly outdoor plants.
-
-Plants to buy:
-✅ Wild Bergamot
-✅ Black-eyed Susan
-✅ Purple Coneflower
-✅ New England Aster
-✅ Dense Blazing Star
-
-Plant safety:
-✅ No high-risk plants detected in the main buy list.
-⚠️ Keep all new plants, tags, soil amendments, and mulch away from chewing pets or small children.
-
-Soil step:
-Add compost lightly and mulch exposed soil with shredded leaves or natural mulch.
-
-This week:
-1. Pick one sunny patch.
-2. Remove weeds.
-3. Place plants before digging.
-4. Add compost and mulch.
-5. Water deeply after planting.
-
-Impact:
-🦋 Pollinator support: High
-💧 Water need: Low
-🧤 Maintenance: Low
-🌱 Native fit: Strong
-
-Sustainability guardrail:
-✅ No invasive plants or synthetic inputs recommended.
-```
+* Add MCP server for local native plant and invasive species lookup
+* Expand plant catalog with verified Ontario native species
+* Add image-based plant identification
+* Add local nursery availability
+* Add seasonal planting windows
+* Add user progress tracking
+* Add before/after microhabitat logs
+* Add Cloud Run public demo endpoint
 
 ---
 
-## Setup
+## Capstone Positioning
 
-### Install dependencies
+**LeafStep Agent: Turning Tiny Yards into Safe Pollinator Microhabitats**
 
-Recommended:
-
-```bash
-uv pip install -r requirements.txt
-```
-
-Alternative:
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
-## Running the Local No-LLM Demo
-
-The local deterministic demo does not require Gemini/API calls.
-
-Run:
-
-```bash
-uv run python demo.py
-```
-
-This prints a guided LeafStep recommendation using local tools.
-
----
-
-## Running Validations
-
-Run:
-
-```bash
-uv run python validate_day3.py
-uv run python validate_day4.py
-uv run python validate_day5.py
-```
-
-Expected result:
-
-```text
-✅ validation passed
-```
-
-The validation scripts check:
-
-* Tool behavior
-* Plant recommendation output
-* Safety filtering
-* Impact badge output
-* Demo readiness
-* Cloud Run wrapper readiness
-
----
-
-## Running the ADK/Gemini Agent Locally
-
-The real ADK agent lives in:
-
-```text
-app/agent.py
-```
-
-To run it with Gemini:
-
-```bash
-export GEMINI_API_KEY="your_api_key_here"
-export GOOGLE_GENAI_USE_VERTEXAI=FALSE
-uv run adk web --port 8000
-```
-
-Example prompt:
-
-```text
-I live in Oakville. I have a small sunny 3x5 backyard patch and pets. Give me one simple first-week pollinator plan.
-```
-
-Note: entering prompts in ADK Web uses Gemini/API quota.
-
----
-
-## Running the Cloud Run Demo Locally
-
-The Cloud Run demo uses FastAPI and local tools.
-
-Run:
-
-```bash
-uv run uvicorn main:app --reload --port 8080
-```
-
-Open:
-
-```text
-http://localhost:8080
-```
-
-Useful endpoints:
-
-```text
-/
-Interactive demo page
-
-/demo
-Text version of the local demo
-
-/health
-Health check endpoint
-```
-
----
-
-## Deploying to Cloud Run
-
-Deploy from Google Cloud Shell or a terminal with `gcloud` configured:
-
-```bash
-gcloud run deploy leafstep-agent \
-  --source . \
-  --region us-central1 \
-  --allow-unauthenticated
-```
-
-The deployed Cloud Run demo is intentionally lightweight and does not require Gemini credits.
-
----
-
-## Credentials / API Key
-
-The local deterministic demo, validation scripts, and Cloud Run demo do not require Gemini credentials.
-
-To use the full ADK/Gemini agent, configure credentials.
-
-### Option A: Google AI Studio API Key
-
-```bash
-export GEMINI_API_KEY="your_api_key_here"
-export GOOGLE_GENAI_USE_VERTEXAI=FALSE
-```
-
-### Option B: Google Cloud / Vertex AI
-
-```bash
-gcloud auth application-default login
-export GOOGLE_GENAI_USE_VERTEXAI=TRUE
-export GOOGLE_CLOUD_PROJECT="your_gcp_project_id"
-export GOOGLE_CLOUD_LOCATION="us-central1"
-```
-
-Do not commit `.env` or API keys.
-
----
-
-## Core Workshop Concepts Used
-
-LeafStep demonstrates:
-
-* Google ADK agent design
-* Tool/function calling
-* Structured input normalization
-* Local deterministic tools
-* LLM-backed ADK flow
-* Safety guardrails
-* Pet/child-aware plant safety filtering
-* Sustainability guardrails
-* Skills
-* Validation scripts
-* Cloud Run deployment
-* Product-focused AI workflow design
-
----
-
-## Project Skills
-
-LeafStep includes two project-specific skills:
-
-```text
-.agents/skills/leafstep-code-review/
-.agents/skills/leafstep-submission-review/
-```
-
-These skills support:
-
-* Reviewing code changes
-* Checking capstone readiness
-* Verifying docs, tools, validation, and demo flow
-* Keeping the project aligned with its Oakville sustainability scope
-
-See:
-
-```text
-docs/skill_usage.md
-```
-
----
-
-## Safety and Privacy Rules
-
-LeafStep avoids unnecessary personal information.
-
-It should not ask for:
-
-* Exact address
-* Phone number
-* Private family details
-* Unneeded personal data
-
-If pets or small children are present, plant safety filtering should run before the final recommendation.
-
-Dangerous plants should be shown under `Avoid`, not in the main buy list.
-
-LeafStep gives beginner gardening guidance. It does not provide veterinary, medical, or poison-control advice.
-
----
-
-## Current Limitations
-
-LeafStep is currently optimized for Oakville / Ontario conditions.
-
-The Cloud Run demo uses deterministic local tools to avoid Gemini quota dependency.
-
-The ADK/Gemini version requires a valid Gemini API key or Vertex AI setup.
-
-Plant safety rules are educational and should not replace professional advice for pet poisoning, child ingestion, allergies, or medical emergencies.
-
----
-
-## Future Vision
-
-LeafStep can grow into a community plant-tracking product where users log:
-
-* Plant survival
-* First bloom
-* First fruit
-* Pollinator visits
-* Watering frequency
-* Maintenance effort
-* Soil coverage
-* Regional biodiversity patterns
-
-Over time, these observations could help communities understand which native or region-friendly plants thrive locally and how small household spaces contribute to biodiversity recovery.
+LeafStep helps beginners convert a small household green space into a native, low-maintenance, pet/kid-aware, pollinator-supporting patch using an ADK-powered agent, structured tools, practical guardrails, and deployment-ready design.
