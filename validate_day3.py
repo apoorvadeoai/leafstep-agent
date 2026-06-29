@@ -7,8 +7,9 @@ Usage:
 import importlib.util
 import os
 
-
-_tools_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app", "tools.py")
+_tools_path = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "app", "tools.py"
+)
 _spec = importlib.util.spec_from_file_location("app.tools", _tools_path)
 _tools = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_tools)
@@ -29,10 +30,18 @@ def run_validation() -> None:
         starter_size="Small — 5 small plants",
     )
 
-    assert_true(profile["space_type"] == "backyard", "space_type should normalize to backyard")
-    assert_true(profile["sunlight"] == "full_sun", "sunlight should normalize to full_sun")
-    assert_true(profile["garden_style"] == "flowers", "garden_style should normalize to flowers")
-    assert_true(profile["safety_mode"] == "pets", "safety_mode should normalize to pets")
+    assert_true(
+        profile["space_type"] == "backyard", "space_type should normalize to backyard"
+    )
+    assert_true(
+        profile["sunlight"] == "full_sun", "sunlight should normalize to full_sun"
+    )
+    assert_true(
+        profile["garden_style"] == "flowers", "garden_style should normalize to flowers"
+    )
+    assert_true(
+        profile["safety_mode"] == "pets", "safety_mode should normalize to pets"
+    )
     assert_true(profile["plant_count_target"] == 5, "plant_count_target should be 5")
 
     recommendations = _tools.plant_recommendation_tool(
@@ -58,7 +67,10 @@ def run_validation() -> None:
     avoid_names = {plant["common_name"] for plant in safety["do_not_buy_list"]}
 
     assert_true("Foxglove" not in buy_names, "Foxglove must not be in buy list")
-    assert_true("Lily of the Valley" not in buy_names, "Lily of the Valley must not be in buy list")
+    assert_true(
+        "Lily of the Valley" not in buy_names,
+        "Lily of the Valley must not be in buy list",
+    )
     assert_true("Foxglove" in avoid_names, "Foxglove should appear in avoid list")
 
     impact = _tools.impact_tracking_tool(
@@ -71,9 +83,13 @@ def run_validation() -> None:
     allowed_maintenance = {"Low", "Medium", "High"}
     allowed_native = {"Weak", "Good", "Strong"}
 
-    assert_true(impact["pollinator_support"] in allowed_pollinator, "invalid pollinator band")
+    assert_true(
+        impact["pollinator_support"] in allowed_pollinator, "invalid pollinator band"
+    )
     assert_true(impact["water_need"] in allowed_water, "invalid water band")
-    assert_true(impact["maintenance"] in allowed_maintenance, "invalid maintenance band")
+    assert_true(
+        impact["maintenance"] in allowed_maintenance, "invalid maintenance band"
+    )
     assert_true(impact["native_fit"] in allowed_native, "invalid native fit band")
 
     print("✅ LeafStep Day 3 validation passed.")

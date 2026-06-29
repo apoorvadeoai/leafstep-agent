@@ -20,6 +20,7 @@ soil stewardship, care planning, and sustainability guardrails.
 
 from typing import Any
 
+
 def space_intake_tool(
     location: str,
     space_type: str,
@@ -73,7 +74,9 @@ def space_intake_tool(
 
     def _normalize_safety_mode(value: str) -> str:
         value = _clean(value)
-        if "both" in value or ("kid" in value and ("dog" in value or "cat" in value or "pet" in value)):
+        if "both" in value or (
+            "kid" in value and ("dog" in value or "cat" in value or "pet" in value)
+        ):
             return "pets_and_kids"
         if "dog" in value or "cat" in value or "pet" in value:
             return "pets"
@@ -100,7 +103,9 @@ def space_intake_tool(
 
     location_note = ""
     if any(word in region.lower() for word in ["address", "street", "postal", "zip"]):
-        location_note = "LeafStep does not need an exact address. City or general region is enough."
+        location_note = (
+            "LeafStep does not need an exact address. City or general region is enough."
+        )
 
     return {
         "region": region,
@@ -124,6 +129,7 @@ def space_intake_tool(
         "status": "valid",
     }
 
+
 def plant_recommendation_tool(
     region: str,
     space_type: str,
@@ -145,7 +151,13 @@ def plant_recommendation_tool(
             "plant_type": "flower",
             "region_fit": ["ontario", "oakville", "toronto"],
             "sunlight": ["full_sun", "part_sun"],
-            "space_fit": ["backyard", "front_yard", "community_garden", "balcony_patio", "side_yard_strip"],
+            "space_fit": [
+                "backyard",
+                "front_yard",
+                "community_garden",
+                "balcony_patio",
+                "side_yard_strip",
+            ],
             "garden_style": ["flowers", "balanced", "surprise_me"],
             "pollinator_support": "High",
             "water_need": "Low",
@@ -159,7 +171,13 @@ def plant_recommendation_tool(
             "plant_type": "flower",
             "region_fit": ["ontario", "oakville", "toronto"],
             "sunlight": ["full_sun", "part_sun"],
-            "space_fit": ["backyard", "front_yard", "community_garden", "balcony_patio", "side_yard_strip"],
+            "space_fit": [
+                "backyard",
+                "front_yard",
+                "community_garden",
+                "balcony_patio",
+                "side_yard_strip",
+            ],
             "garden_style": ["flowers", "balanced", "surprise_me"],
             "pollinator_support": "High",
             "water_need": "Low",
@@ -173,7 +191,12 @@ def plant_recommendation_tool(
             "plant_type": "flower",
             "region_fit": ["ontario", "oakville", "toronto"],
             "sunlight": ["full_sun", "part_sun"],
-            "space_fit": ["backyard", "front_yard", "community_garden", "balcony_patio"],
+            "space_fit": [
+                "backyard",
+                "front_yard",
+                "community_garden",
+                "balcony_patio",
+            ],
             "garden_style": ["flowers", "balanced", "surprise_me"],
             "pollinator_support": "High",
             "water_need": "Low",
@@ -187,7 +210,12 @@ def plant_recommendation_tool(
             "plant_type": "flower",
             "region_fit": ["ontario", "oakville", "toronto"],
             "sunlight": ["full_sun", "part_sun"],
-            "space_fit": ["backyard", "front_yard", "community_garden", "side_yard_strip"],
+            "space_fit": [
+                "backyard",
+                "front_yard",
+                "community_garden",
+                "side_yard_strip",
+            ],
             "garden_style": ["flowers", "balanced", "surprise_me"],
             "pollinator_support": "High",
             "water_need": "Low",
@@ -243,7 +271,12 @@ def plant_recommendation_tool(
             "plant_type": "leafy",
             "region_fit": ["ontario", "oakville", "toronto"],
             "sunlight": ["mostly_shade", "part_sun"],
-            "space_fit": ["backyard", "side_yard_strip", "community_garden", "balcony_patio"],
+            "space_fit": [
+                "backyard",
+                "side_yard_strip",
+                "community_garden",
+                "balcony_patio",
+            ],
             "garden_style": ["leafy", "flowers", "balanced", "surprise_me"],
             "pollinator_support": "Medium",
             "water_need": "Medium",
@@ -271,7 +304,13 @@ def plant_recommendation_tool(
             "plant_type": "grass",
             "region_fit": ["ontario", "oakville", "toronto"],
             "sunlight": ["full_sun"],
-            "space_fit": ["backyard", "front_yard", "side_yard_strip", "community_garden", "balcony_patio"],
+            "space_fit": [
+                "backyard",
+                "front_yard",
+                "side_yard_strip",
+                "community_garden",
+                "balcony_patio",
+            ],
             "garden_style": ["leafy", "balanced", "surprise_me"],
             "pollinator_support": "Medium",
             "water_need": "Low",
@@ -299,7 +338,13 @@ def plant_recommendation_tool(
             "plant_type": "fruit",
             "region_fit": ["ontario", "oakville", "toronto"],
             "sunlight": ["full_sun", "part_sun"],
-            "space_fit": ["backyard", "front_yard", "community_garden", "balcony_patio", "side_yard_strip"],
+            "space_fit": [
+                "backyard",
+                "front_yard",
+                "community_garden",
+                "balcony_patio",
+                "side_yard_strip",
+            ],
             "garden_style": ["fruits_edible", "balanced", "surprise_me"],
             "pollinator_support": "Medium",
             "water_need": "Low",
@@ -313,7 +358,12 @@ def plant_recommendation_tool(
             "plant_type": "fruit",
             "region_fit": ["ontario", "oakville", "toronto"],
             "sunlight": ["full_sun", "part_sun"],
-            "space_fit": ["backyard", "front_yard", "community_garden", "balcony_patio"],
+            "space_fit": [
+                "backyard",
+                "front_yard",
+                "community_garden",
+                "balcony_patio",
+            ],
             "garden_style": ["fruits_edible", "balanced"],
             "pollinator_support": "Medium",
             "water_need": "Medium",
@@ -369,6 +419,7 @@ def plant_recommendation_tool(
             f"{normalized_style.replace('_', ' ')} picks for {normalized_space.replace('_', ' ')}."
         ),
     }
+
 
 def plant_safety_tool(
     recommended_plants: list[dict[str, Any]],
@@ -478,6 +529,7 @@ def plant_safety_tool(
         "safety_summary": summary,
     }
 
+
 def impact_tracking_tool(
     buy_list: list[dict[str, Any]],
     careful_placement_list: list[dict[str, Any]],
@@ -499,15 +551,11 @@ def impact_tracking_tool(
     pollinator_values = [
         plant.get("pollinator_support", "Low") for plant in selected_plants
     ]
-    water_values = [
-        plant.get("water_need", "Medium") for plant in selected_plants
-    ]
+    water_values = [plant.get("water_need", "Medium") for plant in selected_plants]
     maintenance_values = [
         plant.get("maintenance", "Medium") for plant in selected_plants
     ]
-    native_values = [
-        plant.get("native_fit", "Good") for plant in selected_plants
-    ]
+    native_values = [plant.get("native_fit", "Good") for plant in selected_plants]
 
     high_pollinator_count = pollinator_values.count("High")
     medium_pollinator_count = pollinator_values.count("Medium")
@@ -563,7 +611,8 @@ def impact_tracking_tool(
         "biodiversity_value": biodiversity_value,
         "tracking_action": "Take a first photo and log first bloom or new growth later.",
     }
-    
+
+
 def soil_stewardship_tool(location: str, space_type: str) -> dict[str, Any]:
     """Provides organic soil stewardship recommendations for the given location and space type.
 

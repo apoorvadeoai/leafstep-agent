@@ -2,7 +2,7 @@
 #
 # Licensed under the Apache License, Version 2.0
 
-"""LeafStep Agent – Day 2 Local No-LLM Demo.
+"""LeafStep Agent - Day 2 Local No-LLM Demo.
 
 Runs the Day 2 LeafStep workflow directly:
 1. Guided 6-question intake
@@ -19,7 +19,9 @@ import importlib.util
 import os
 
 # Import tools.py directly so app/__init__.py and google.adk are not triggered.
-_tools_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app", "tools.py")
+_tools_path = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "app", "tools.py"
+)
 _spec = importlib.util.spec_from_file_location("app.tools", _tools_path)
 _tools = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_tools)
@@ -56,7 +58,7 @@ SCENARIOS = [
         "name": "Balcony edible starter",
         "location": "Toronto, Ontario",
         "space_type": "Balcony / patio",
-        "sunlight": "Part sun — 2–3 hours",
+        "sunlight": "Part sun — 2-3 hours",
         "garden_style": "More fruits / edible plants",
         "safety_mode": "None",
         "starter_size": "Tiny — 2 small plants",
@@ -68,7 +70,7 @@ def _print_setup(scenario: dict) -> None:
     print("\n🌿 LeafStep Setup\n")
     print("Q1/6 — Where should LeafStep plan for?")
     print("A. Use my location")
-    print("B. I’ll type my city")
+    print("B. I'll type my city")
     print(f"> B — {scenario['location']}\n")
 
     print("Q2/6 — Where do you want more green?")
@@ -77,14 +79,14 @@ def _print_setup(scenario: dict) -> None:
     print("C. Balcony / patio")
     print("D. Side yard / small strip")
     print("E. Community garden")
-    print("F. Other / I’ll type it")
+    print("F. Other / I'll type it")
     print(f"> A — {scenario['space_type']}\n")
 
     print("Q3/6 — How much direct sun does it get?")
     print("A. Full sun — 6+ hours")
-    print("B. Part sun — 2–3 hours")
+    print("B. Part sun — 2-3 hours")
     print("C. Mostly shade — little direct sun")
-    print("D. Other / I’ll type it")
+    print("D. Other / I'll type it")
     print(f"> A — {scenario['sunlight']}\n")
 
     print("Q4/6 — What look do you want?")
@@ -93,7 +95,7 @@ def _print_setup(scenario: dict) -> None:
     print("C. More fruits / edible plants")
     print("D. Balanced mix")
     print("E. Surprise me")
-    print("F. Other / I’ll type it")
+    print("F. Other / I'll type it")
     print(f"> A — {scenario['garden_style']}\n")
 
     print("Q5/6 — Should LeafStep avoid plants risky for anyone?")
@@ -101,7 +103,7 @@ def _print_setup(scenario: dict) -> None:
     print("B. Kids")
     print("C. Both pets and kids")
     print("D. None")
-    print("E. Something else / I’ll type it")
+    print("E. Something else / I'll type it")
     print(f"> A — {scenario['safety_mode']}\n")
 
     print("Q6/6 — How big should your first LeafStep be?")
@@ -109,7 +111,7 @@ def _print_setup(scenario: dict) -> None:
     print("B. Small — 5 small plants")
     print("C. Medium — about 10 plants")
     print("D. Large — 15+ plants")
-    print("E. Other / I’ll type it")
+    print("E. Other / I'll type it")
     print(f"> B — {scenario['starter_size']}\n")
 
 
@@ -169,7 +171,7 @@ def run_demo() -> None:
         space_type=profile["space_type"],
     )
 
-    care = care_plan_tool(
+    _ = care_plan_tool(
         plants=plant_names,
         experience_level="beginner",
     )
@@ -215,10 +217,7 @@ def run_demo() -> None:
         f"🧤 Maintenance: {impact['maintenance']} "
         f"{_status_icon(impact['maintenance'], lower_is_better=True)}"
     )
-    print(
-        f"🌱 Native fit: {impact['native_fit']} "
-        f"{_status_icon(impact['native_fit'])}"
-    )
+    print(f"🌱 Native fit: {impact['native_fit']} {_status_icon(impact['native_fit'])}")
 
     print("\nThis week:")
     print("1. Pick one sunny patch")

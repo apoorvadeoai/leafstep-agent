@@ -18,7 +18,8 @@ checks = {
     "plant recommendation tool registered": "plant_recommendation_tool" in agent_text,
     "soil stewardship tool registered": "soil_stewardship_tool" in agent_text,
     "care plan tool registered": "care_plan_tool" in agent_text,
-    "sustainability guardrail registered": "sustainability_guardrail_tool" in agent_text,
+    "sustainability guardrail registered": "sustainability_guardrail_tool"
+    in agent_text,
     "guardrail tool defined": "def sustainability_guardrail_tool" in tools_text,
     "code review skill exists": (
         ROOT / ".agents" / "skills" / "leafstep-code-review" / "SKILL.md"

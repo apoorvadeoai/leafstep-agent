@@ -1,5 +1,3 @@
-from fastapi import FastAPI, Form
-from fastapi.responses import HTMLResponse, PlainTextResponse
 import html
 import importlib.util
 import os
@@ -7,6 +5,8 @@ import subprocess
 import sys
 from typing import Any
 
+from fastapi import FastAPI, Form
+from fastapi.responses import HTMLResponse, PlainTextResponse
 
 app = FastAPI(title="LeafStep Agent Demo")
 
@@ -214,8 +214,12 @@ def call_plant_recommendation_tool(
             "wants_indoor_support": False,
         },
         {
-            "region": profile.get("region") or profile.get("location") or "Oakville, Ontario",
-            "space_type": profile.get("space_type") or profile.get("dimensions") or "garden patch",
+            "region": profile.get("region")
+            or profile.get("location")
+            or "Oakville, Ontario",
+            "space_type": profile.get("space_type")
+            or profile.get("dimensions")
+            or "garden patch",
             "sunlight": sunlight,
             "garden_style": profile.get("garden_style") or "balanced mix",
             "starter_size": profile.get("starter_size") or "small",
@@ -270,7 +274,11 @@ def fallback_plants_for_sunlight(sunlight: str) -> list[dict[str, str]]:
 
     sunlight_key = sunlight.lower()
 
-    if "shade" in sunlight_key and "partial" not in sunlight_key and "part" not in sunlight_key:
+    if (
+        "shade" in sunlight_key
+        and "partial" not in sunlight_key
+        and "part" not in sunlight_key
+    ):
         return [
             {
                 "common_name": "Wild Ginger",
@@ -554,15 +562,17 @@ def render_plant_list(plants: list[Any]) -> str:
         if isinstance(plant, dict):
             name = plant.get("common_name") or plant.get("name") or "Plant"
             scientific_name = plant.get("scientific_name", "")
-            benefits = plant.get("benefits") or plant.get("reason") or plant.get("why") or ""
+            benefits = (
+                plant.get("benefits") or plant.get("reason") or plant.get("why") or ""
+            )
             care = plant.get("care") or plant.get("care_tip") or ""
 
             html_parts.append(
                 f"""
                 <div class="plant">
-                  <h3>{safe_text(name)} {f'<span class="muted">({safe_text(scientific_name)})</span>' if scientific_name else ''}</h3>
-                  {f'<p><strong>Why:</strong> {safe_text(benefits)}</p>' if benefits else ''}
-                  {f'<p><strong>Care:</strong> {safe_text(care)}</p>' if care else ''}
+                  <h3>{safe_text(name)} {f'<span class="muted">({safe_text(scientific_name)})</span>' if scientific_name else ""}</h3>
+                  {f"<p><strong>Why:</strong> {safe_text(benefits)}</p>" if benefits else ""}
+                  {f"<p><strong>Care:</strong> {safe_text(care)}</p>" if care else ""}
                 </div>
                 """
             )
@@ -583,9 +593,16 @@ def render_warning_list(items: list[Any]) -> str:
 
     for item in items:
         if isinstance(item, dict):
-            name = item.get("common_name") or item.get("name") or item.get("plant") or "Plant"
+            name = (
+                item.get("common_name")
+                or item.get("name")
+                or item.get("plant")
+                or "Plant"
+            )
             reason = item.get("reason") or item.get("note") or item.get("warning") or ""
-            output += f"<li><strong>{safe_text(name)}:</strong> {safe_text(reason)}</li>"
+            output += (
+                f"<li><strong>{safe_text(name)}:</strong> {safe_text(reason)}</li>"
+            )
         else:
             output += f"<li>{safe_text(item)}</li>"
 
@@ -677,7 +694,9 @@ def plan(
     )
 
     profile_location = profile.get("location") or profile.get("region") or location
-    profile_dimensions = profile.get("dimensions") or profile.get("space_type") or dimensions
+    profile_dimensions = (
+        profile.get("dimensions") or profile.get("space_type") or dimensions
+    )
     profile_sunlight = profile.get("sunlight") or sunlight
 
     plants_data = call_plant_recommendation_tool(
@@ -721,7 +740,9 @@ def plan(
         for plant in plants_to_buy
     ]
 
-    space_type = "container garden" if "container" in dimensions.lower() else "garden patch"
+    space_type = (
+        "container garden" if "container" in dimensions.lower() else "garden patch"
+    )
 
     soil_data = soil_stewardship_tool(
         location=profile_location,
@@ -747,13 +768,11 @@ def plan(
     )
 
     preparation_steps = "".join(
-        f"<li>{safe_text(step)}</li>"
-        for step in soil_data.get("preparation_steps", [])
+        f"<li>{safe_text(step)}</li>" for step in soil_data.get("preparation_steps", [])
     )
 
     organic_practices = "".join(
-        f"<li>{safe_text(step)}</li>"
-        for step in soil_data.get("organic_practices", [])
+        f"<li>{safe_text(step)}</li>" for step in soil_data.get("organic_practices", [])
     )
 
     first_week_items = []
@@ -773,8 +792,7 @@ def plan(
     first_week_html = "".join(first_week_items)
 
     care_tips_html = "".join(
-        f"<li>{safe_text(tip)}</li>"
-        for tip in care_data.get("tips", [])[:2]
+        f"<li>{safe_text(tip)}</li>" for tip in care_data.get("tips", [])[:2]
     )
 
     safety_status = str(safety_data.get("status", "PASS"))
@@ -784,9 +802,11 @@ def plan(
     guardrail_css = status_class(guardrail_status)
 
     if guardrail.get("violations"):
-        guardrail_details = "<ul>" + "".join(
-            f"<li>{safe_text(v)}</li>" for v in guardrail["violations"]
-        ) + "</ul>"
+        guardrail_details = (
+            "<ul>"
+            + "".join(f"<li>{safe_text(v)}</li>" for v in guardrail["violations"])
+            + "</ul>"
+        )
     else:
         guardrail_details = """
         <ul>
@@ -826,9 +846,19 @@ def plan(
       <p><strong>Location:</strong> {safe_text(profile_location)}</p>
       <p><strong>Space:</strong> {safe_text(profile_dimensions)}</p>
       <p><strong>Sunlight:</strong> {safe_text(profile_sunlight)}</p>
-      <p><strong>Pets or small children:</strong> {"Yes" if has_safety_needs else "No"}</p>
-      {f'<p class="muted">{safe_text(profile.get("space_warning", ""))}</p>' if profile.get("space_warning") else ''}
-      {f'<p class="muted">{safe_text(profile.get("location_note", ""))}</p>' if profile.get("location_note") else ''}
+      <p><strong>Pets or small children:</strong> {
+        "Yes" if has_safety_needs else "No"
+    }</p>
+      {
+        f'<p class="muted">{safe_text(profile.get("space_warning", ""))}</p>'
+        if profile.get("space_warning")
+        else ""
+    }
+      {
+        f'<p class="muted">{safe_text(profile.get("location_note", ""))}</p>'
+        if profile.get("location_note")
+        else ""
+    }
     </div>
 
     <div class="card">
@@ -840,26 +870,42 @@ def plan(
     <div class="card">
       <h2>3. Plant Safety Check</h2>
       <p>Status: <span class="{safety_css}">{safe_text(safety_status)}</span></p>
-      <p><strong>Pets or small children:</strong> {"Yes" if has_safety_needs else "No"}</p>
+      <p><strong>Pets or small children:</strong> {
+        "Yes" if has_safety_needs else "No"
+    }</p>
       <p>{safe_text(safety_data.get("summary", ""))}</p>
 
-      {f'''
+      {
+        f'''
       <h3>Careful placement</h3>
       {render_warning_list(careful_placement)}
-      ''' if careful_placement else ''}
+      '''
+        if careful_placement
+        else ""
+    }
 
-      {f'''
+      {
+        f'''
       <h3>Avoid</h3>
       {render_warning_list(avoid_plants)}
-      ''' if avoid_plants else ''}
+      '''
+        if avoid_plants
+        else ""
+    }
 
-      {f'<p><strong>Recommendation:</strong> {safe_text(safety_data.get("recommendation"))}</p>' if safety_data.get("recommendation") else ''}
+      {
+       f"<p><strong>Recommendation:</strong> {safe_text(safety_data.get('recommendation'))}</p>"
+        if safety_data.get("recommendation")
+        else ""
+    }
       <p class="muted">Plant safety guidance is educational and does not replace veterinary, medical, or poison-control advice.</p>
     </div>
 
     <div class="card">
       <h2>4. Soil Stewardship</h2>
-      <p><strong>Soil profile:</strong> {safe_text(soil_data.get("soil_profile", "General garden soil"))}</p>
+      <p><strong>Soil profile:</strong> {
+        safe_text(soil_data.get("soil_profile", "General garden soil"))
+    }</p>
       <ul>{preparation_steps}</ul>
       <h3>Organic practices</h3>
       <ul>{organic_practices}</ul>
@@ -869,13 +915,13 @@ def plan(
     <div class="card">
       <h2>5. First-Week Action Plan</h2>
       <ul>{first_week_html}</ul>
-      {f'<h3>Care tips</h3><ul>{care_tips_html}</ul>' if care_tips_html else ''}
+      {f"<h3>Care tips</h3><ul>{care_tips_html}</ul>" if care_tips_html else ""}
     </div>
 
     <div class="card">
       <h2>6. Impact Snapshot</h2>
       <ul>
-        {''.join(impact_lines)}
+        {"".join(impact_lines)}
       </ul>
     </div>
 
@@ -883,7 +929,9 @@ def plan(
       <h2>7. Sustainability Guardrail</h2>
       <p>Status: <span class="{guardrail_css}">{safe_text(guardrail_status)}</span></p>
       {guardrail_details}
-      <p><strong>Recommendation:</strong> {safe_text(guardrail.get("recommendation", ""))}</p>
+      <p><strong>Recommendation:</strong> {
+        safe_text(guardrail.get("recommendation", ""))
+    }</p>
     </div>
 
     <p>

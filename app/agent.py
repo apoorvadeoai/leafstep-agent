@@ -131,13 +131,13 @@ root_agent = Agent(
     ),
     instruction=LEAFSTEP_INSTRUCTION,
     tools=[
-       space_intake_tool,
-    plant_recommendation_tool,
-    plant_safety_tool,
-    impact_tracking_tool,
-    soil_stewardship_tool,
-    care_plan_tool,
-    sustainability_guardrail_tool,
+        space_intake_tool,
+        plant_recommendation_tool,
+        plant_safety_tool,
+        impact_tracking_tool,
+        soil_stewardship_tool,
+        care_plan_tool,
+        sustainability_guardrail_tool,
     ],
 )
 
