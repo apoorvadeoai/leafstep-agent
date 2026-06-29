@@ -17,7 +17,27 @@ This is where you test your business logic, including agent functionality,
 data processing, and other core components of your application.
 """
 
+from app.tools import space_intake_tool
+
 
 def test_dummy() -> None:
     """Placeholder - replace with real tests."""
     assert 1 == 1
+
+
+def test_space_intake_generalizes_exact_address() -> None:
+    result = space_intake_tool(
+        location="123 Maple Street, Oakville",
+        space_type="backyard",
+        sunlight="part sun",
+        garden_style="flowers",
+        safety_mode="pets and kids",
+        starter_size="small",
+    )
+
+    assert result["region"] == "Oakville"
+    assert result["location"] == "Oakville"
+    assert result["exact_address_needed"] is False
+    assert result["possible_exact_address"] is True
+    assert result["privacy_status"] == "generalize_location"
+    assert "does not need your exact home address" in result["location_note"]

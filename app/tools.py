@@ -29,7 +29,12 @@ def space_intake_tool(
     safety_mode: str,
     starter_size: str,
 ) -> dict[str, Any]:
-    """Normalizes the 6-question LeafStep setup into a structured profile."""
+    """Normalizes the 6-question LeafStep setup into a structured profile.
+
+    LeafStep only needs a city or general region for garden planning. If a user
+    enters an exact-address-looking location, the tool keeps the original text
+    for now but clearly marks that exact addresses are unnecessary.
+    """
 
     def _clean(value: str) -> str:
         return value.strip().lower()
@@ -98,13 +103,68 @@ def space_intake_tool(
             return "large", 15
         return "custom", 5
 
-    region = location.strip() or "Ontario"
+    def _looks_like_exact_address(value: str) -> bool:
+        value_lower = value.lower()
+
+        address_signals = [
+            "address",
+            "street",
+            "st.",
+            "road",
+            "rd.",
+            "avenue",
+            "ave",
+            "drive",
+            "dr.",
+            "lane",
+            "court",
+            "crt",
+            "boulevard",
+            "blvd",
+            "postal",
+            "postcode",
+            "zip",
+        ]
+
+        has_number = any(char.isdigit() for char in value)
+        has_address_signal = any(signal in value_lower for signal in address_signals)
+
+        return has_number and has_address_signal
+
+    def _generalize_location(value: str) -> str:
+        value_lower = value.lower()
+
+        known_regions = [
+            "oakville",
+            "halton",
+            "burlington",
+            "milton",
+            "toronto",
+            "mississauga",
+            "ontario",
+        ]
+
+        for known_region in known_regions:
+            if known_region in value_lower:
+                return known_region.title()
+
+        return "Ontario"
+
+    raw_location = location.strip() or "Ontario"
+    possible_exact_address = _looks_like_exact_address(raw_location)
+    region = (
+        _generalize_location(raw_location) if possible_exact_address else raw_location
+    )
     patch_size, plant_count_target = _normalize_starter_size(starter_size)
 
+    privacy_status = "pass"
     location_note = ""
-    if any(word in region.lower() for word in ["address", "street", "postal", "zip"]):
+
+    if possible_exact_address:
+        privacy_status = "generalize_location"
         location_note = (
-            "LeafStep does not need an exact address. City or general region is enough."
+            "LeafStep does not need your exact home address. "
+            "City or general region is enough for garden planning."
         )
 
     return {
@@ -117,6 +177,8 @@ def space_intake_tool(
         "patch_size": patch_size,
         "plant_count_target": plant_count_target,
         "exact_address_needed": False,
+        "possible_exact_address": possible_exact_address,
+        "privacy_status": privacy_status,
         "location_note": location_note,
         "default_leafstep_goals": [
             "pollinator_friendly",
