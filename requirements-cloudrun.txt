@@ -1,6 +1,7 @@
 fastapi
 uvicorn[standard]
 python-multipart
-google-adk[gcp]>=2.0.0,<3.0.0
-opentelemetry-instrumentation-google-genai>=0.1.0,<1.0.0
-google-cloud-logging>=3.12.0,<4.0.0
+google-adk
+google-genai
+google-auth
+google-cloud-logging
