@@ -2,7 +2,7 @@
 
 **LeafStep Agent** is an AI agent that helps households turn a small outdoor space into a safe, low-maintenance, pollinator-friendly microhabitat.
 
-The project was built for the **Google x Kaggle 5-Day AI Agents: Intensive Vibe Coding Capstone**. It demonstrates how an agent can guide a beginner from vague gardening intent to a practical first action plan using structured intake, tool orchestration, safety guardrails, and deployment-ready architecture.
+The project was built for the **Google x Kaggle 5-Day AI Agents: Intensive Vibe Coding Capstone**. It demonstrates how an agent can guide a beginner from vague gardening intent to a practical first action plan using structured intake, deterministic tools, safety guardrails, ADK/Gemini integration, project-scoped skills, and Cloud Run-ready deployment.
 
 ---
 
@@ -26,7 +26,7 @@ Instead of telling users to redesign their whole yard, LeafStep helps them take 
 
 ## Solution
 
-LeafStep Agent collects a simple 6-question intake and turns it into a beginner-friendly microhabitat plan.
+LeafStep Agent collects a simple intake and turns it into a beginner-friendly microhabitat plan.
 
 The agent can:
 
@@ -36,7 +36,7 @@ The agent can:
 * Avoid unnecessary exact address collection
 * Provide simple impact badges
 * Suggest organic soil stewardship actions
-* Generate a 30-day beginner care plan
+* Generate a beginner care plan
 * Run sustainability guardrails against invasive plants and synthetic inputs
 
 ---
@@ -45,7 +45,7 @@ The agent can:
 
 LeafStep is more than a static plant list.
 
-An agent is useful here because the user’s needs are contextual:
+An agent is useful here because the user's needs are contextual:
 
 * A backyard is different from a balcony
 * Full sun is different from shade
@@ -55,35 +55,78 @@ An agent is useful here because the user’s needs are contextual:
 
 LeafStep uses tools to break the workflow into reliable steps instead of asking the LLM to invent everything from scratch.
 
+The latest ADK/Gemini demo uses a **single LLM-facing wrapper tool**, `leafstep_full_plan_tool`, while the safety-critical workflow still runs through deterministic Python tools underneath.
+
+This design keeps the LLM-facing schema simple, reduces token usage, avoids malformed nested function calls, and keeps privacy, safety, and sustainability checks testable.
+
 ---
 
 ## Architecture
 
 ```mermaid
 flowchart TD
-    User[User] --> Agent[LeafStep ADK Agent]
+    User[User] --> ADK[ADK Web / Gemini Agent]
 
-    Agent --> Intake[space_intake_tool]
-    Agent --> Recommend[plant_recommendation_tool]
-    Agent --> Safety[plant_safety_tool]
-    Agent --> Impact[impact_tracking_tool]
-    Agent --> Soil[soil_stewardship_tool]
-    Agent --> Care[care_plan_tool]
-    Agent --> Guardrail[sustainability_guardrail_tool]
+    ADK --> Wrapper[leafstep_full_plan_tool]
 
-    Intake --> Privacy[Privacy Guardrail]
+    Wrapper --> Intake[space_intake_tool]
+    Wrapper --> Recommend[plant_recommendation_tool]
+    Wrapper --> Safety[plant_safety_tool]
+    Wrapper --> Impact[impact_tracking_tool]
+    Wrapper --> Soil[soil_stewardship_tool]
+    Wrapper --> Care[care_plan_tool]
+    Wrapper --> Guardrail[sustainability_guardrail_tool]
+
+    Intake --> Privacy[Privacy Guardrail: exact address generalized]
     Recommend --> Plants[Region-Friendly Plant Catalog]
     Safety --> Household[Pet/Kid Safety Rules]
-    Guardrail --> Eco[Invasive Plant + Chemical Input Checks]
+    Impact --> Badges[Impact Badges]
+    Soil --> SoilPlan[Organic Soil Guidance]
+    Care --> CareSteps[Beginner Care Plan]
+    Guardrail --> Eco[Invasive Plant + Synthetic Input Checks]
+
+    Wrapper --> Final[Beginner-Friendly LeafStep Plan]
 ```
+
+### ADK Web Demo Design
+
+For the ADK/Gemini web demo, LeafStep exposes one demo-safe wrapper tool: `leafstep_full_plan_tool`.
+
+This wrapper accepts simple string inputs from Gemini, then runs the full deterministic LeafStep workflow internally:
+
+1. Intake normalization
+2. Privacy/address generalization
+3. Plant recommendation
+4. Pet/kid safety filtering
+5. Impact tracking
+6. Soil stewardship guidance
+7. Care planning
+8. Sustainability guardrail checking
+
+This prevents the LLM from having to pass complex nested plant objects between tools. Gemini handles the user-facing reasoning and summary, while Python controls the safety-critical workflow.
 
 ---
 
 ## Core Tools
 
+### `leafstep_full_plan_tool`
+
+This is the main ADK/Gemini-facing tool for the web demo.
+
+It accepts simple string inputs:
+
+* Location
+* Space type
+* Sunlight
+* Garden style
+* Safety mode
+* Starter size
+
+Then it orchestrates the complete LeafStep workflow internally using the deterministic tools below.
+
 ### `space_intake_tool`
 
-Normalizes the 6-question setup:
+Normalizes the setup:
 
 * Location
 * Space type
@@ -137,7 +180,7 @@ Provides organic soil preparation guidance, including compost, mulch, and low-di
 
 ### `care_plan_tool`
 
-Creates a beginner-friendly 30-day care plan.
+Creates a beginner-friendly care plan.
 
 ### `sustainability_guardrail_tool`
 
@@ -156,7 +199,7 @@ LeafStep includes three practical guardrail themes.
 
 ### 1. Privacy Guardrail
 
-LeafStep does not need a user’s exact home address.
+LeafStep does not need a user's exact home address.
 
 If a user enters something like:
 
@@ -194,15 +237,17 @@ This keeps the agent aligned with the project goal: helping users create small e
 
 This project demonstrates multiple concepts from the Google/Kaggle AI Agents course.
 
-| Concept                | Where it appears                                                          |
-| ---------------------- | ------------------------------------------------------------------------- |
-| ADK agent              | `app/agent.py`                                                            |
-| Tool orchestration     | `app/tools.py`                                                            |
-| Gemini / real LLM demo | `run_agent_demo.py`                                                       |
-| Guardrails / safety    | `space_intake_tool`, `plant_safety_tool`, `sustainability_guardrail_tool` |
-| Agents CLI skills      | `.agents/skills/`                                                         |
-| Deployability          | `Dockerfile`, `main.py`, Cloud Run-ready app structure                    |
-| Testing                | `tests/unit/test_tools.py`                                                |
+| Concept                | Where it appears                                                                                                                                                          |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ADK agent              | `app/agent.py`                                                                                                                                                            |
+| Gemini / real LLM demo | `adk web`, `run_agent_demo.py`, `llm_main.py`                                                                                                                             |
+| Tool orchestration     | `leafstep_full_plan_tool` orchestrates deterministic tools in `app/tools.py`                                                                                              |
+| Deterministic tools    | `space_intake_tool`, `plant_recommendation_tool`, `plant_safety_tool`, `impact_tracking_tool`, `soil_stewardship_tool`, `care_plan_tool`, `sustainability_guardrail_tool` |
+| Guardrails / safety    | Privacy generalization, pet/kid safety, sustainability checks                                                                                                             |
+| Token efficiency       | One LLM-facing wrapper tool instead of exposing many nested tool schemas                                                                                                  |
+| Agents CLI skills      | `.agents/skills/`                                                                                                                                                         |
+| Deployability          | `Dockerfile`, `main.py`, `llm_main.py`, `requirements-cloudrun.txt`                                                                                                       |
+| Testing                | `tests/unit/test_tools.py`                                                                                                                                                |
 
 ---
 
@@ -241,7 +286,7 @@ These skills do not run inside the user-facing product. They support repeatable 
 
 ## Demo Options
 
-LeafStep has two demo paths.
+LeafStep has three demo paths.
 
 ### 1. Local deterministic demo
 
@@ -253,7 +298,39 @@ uv run python demo.py
 
 Use this when you want a predictable local demo without Gemini credentials.
 
-### 2. Real ADK/Gemini demo
+### 2. Local ADK/Gemini web demo
+
+This runs the ADK web interface locally and uses the Gemini-powered LeafStep agent.
+
+Set your Gemini API key first:
+
+```bash
+export GEMINI_API_KEY="your_api_key_here"
+export GOOGLE_GENAI_USE_VERTEXAI=FALSE
+export GOOGLE_GENAI_USE_ENTERPRISE=FALSE
+```
+
+Then run:
+
+```bash
+uv run adk web
+```
+
+Recommended short demo prompt:
+
+```text
+Plan a small Oakville backyard LeafStep: part sun, flowers, pets and kids. Include plants, safety, soil, care, impact, and sustainability.
+```
+
+The ADK web demo should call:
+
+```text
+leafstep_full_plan_tool
+```
+
+and return a beginner-friendly LeafStep plan.
+
+### 3. Real ADK/Gemini trace demo
 
 This runs a real ADK/Gemini tool-calling trace and then a deterministic full tool-chain demo.
 
@@ -261,6 +338,7 @@ Set your Gemini API key first:
 
 ```bash
 export GEMINI_API_KEY="your_api_key_here"
+export GOOGLE_GENAI_USE_VERTEXAI=FALSE
 export GOOGLE_GENAI_USE_ENTERPRISE=FALSE
 ```
 
@@ -270,16 +348,18 @@ Then run:
 uv run python run_agent_demo.py
 ```
 
-This demo shows:
+This demo can show:
 
-* Real ADK/Gemini tool call
+* ADK/Gemini agent behavior
 * Privacy guardrail
 * Plant recommendations
 * Pet/kid safety filtering
 * Impact badges
 * Soil guidance
-* 30-day care plan
+* Care plan
 * Sustainability guardrail
+
+If Gemini is temporarily unavailable or overloaded, the deterministic full tool-chain section still demonstrates the complete LeafStep workflow.
 
 ---
 
@@ -311,16 +391,26 @@ uv run ruff check . --fix
 uv run pytest tests/unit
 ```
 
-### 5. Run local demo
+### 5. Run local deterministic demo
 
 ```bash
 uv run python demo.py
 ```
 
-### 6. Run ADK/Gemini demo
+### 6. Run ADK/Gemini web demo
 
 ```bash
 export GEMINI_API_KEY="your_api_key_here"
+export GOOGLE_GENAI_USE_VERTEXAI=FALSE
+export GOOGLE_GENAI_USE_ENTERPRISE=FALSE
+uv run adk web
+```
+
+### 7. Run ADK/Gemini trace demo
+
+```bash
+export GEMINI_API_KEY="your_api_key_here"
+export GOOGLE_GENAI_USE_VERTEXAI=FALSE
 export GOOGLE_GENAI_USE_ENTERPRISE=FALSE
 uv run python run_agent_demo.py
 ```
@@ -344,7 +434,7 @@ Run:
 uv run pytest tests/unit
 ```
 
-Note: Some integration tests require Google credentials because they call the real ADK/Gemini agent.
+Note: Some integration-style demos require Google credentials because they call the real ADK/Gemini agent.
 
 ---
 
@@ -366,7 +456,8 @@ LeafStep output:
 * Applies pet/kid safety filtering
 * Returns simple impact badges
 * Suggests compost and mulch-based soil prep
-* Creates a 30-day care plan
+* Creates beginner care guidance
+* Runs a sustainability guardrail check
 
 ---
 
@@ -386,22 +477,42 @@ The final list depends on the intake profile and safety filtering.
 
 ## Deployment
 
-LeafStep is designed to be deployable using a containerized app structure.
+LeafStep supports two Cloud Run deployment modes.
 
-Relevant files:
+### 1. Stable no-LLM Cloud Run demo
 
-* `Dockerfile`
-* `main.py`
-* `requirements-cloudrun.txt`
-* `app/fast_api_app.py`
+This deploys the deterministic FastAPI demo from `main.py`.
 
-A Cloud Run deployment can be added using the Google Cloud project and Gemini configuration.
+```bash
+gcloud run deploy leafstep-agent-demo-nollm \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated
+```
 
-Important:
+This version is useful for a stable public demo because it does not depend on live Gemini availability.
+
+### 2. LLM Cloud Run demo
+
+This deploys the ADK/Gemini-facing demo from `llm_main.py`.
+
+```bash
+gcloud run deploy leafstep-agent-llm \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars APP_MODULE=llm_main:app,GOOGLE_GENAI_USE_VERTEXAI=FALSE,GOOGLE_GENAI_USE_ENTERPRISE=FALSE
+```
+
+The LLM service also needs a Gemini API key configured as an environment variable or secret:
+
+```text
+GEMINI_API_KEY=your_api_key_here
+```
 
 Do not commit API keys or secrets to the repository.
 
-Use environment variables for credentials.
+Use Cloud Run environment variables or Secret Manager for credentials.
 
 ---
 
@@ -429,10 +540,34 @@ leafstep-agent/
 ├── demo.py
 ├── run_agent_demo.py
 ├── main.py
+├── llm_main.py
 ├── Dockerfile
+├── requirements-cloudrun.txt
 ├── pyproject.toml
 └── README.md
 ```
+
+---
+
+## Design Tradeoff
+
+The ADK/Gemini demo intentionally exposes a single wrapper tool instead of seven separate LLM-facing tools.
+
+Earlier versions exposed each tool directly to the agent. That approach showed explicit tool chaining but made the LLM responsible for passing nested plant objects between tool calls, which increased token usage and could produce malformed function calls.
+
+The current design keeps the core workflow modular and deterministic while making the LLM interface simpler:
+
+```text
+Gemini / ADK
+    ↓
+leafstep_full_plan_tool
+    ↓
+deterministic Python tool chain
+    ↓
+safe beginner-friendly plan
+```
+
+This is better for demo reliability, token efficiency, and safety-critical workflows.
 
 ---
 
@@ -447,6 +582,7 @@ Current limitations:
 * The agent does not replace professional horticultural, ecological, medical, or veterinary advice
 * Pet/kid safety is conservative but not exhaustive
 * Local nursery inventory is not currently checked
+* Live Gemini behavior can depend on API availability and model load
 * MCP is not included in the current version and is a possible future enhancement
 
 ---
@@ -462,7 +598,7 @@ Potential next steps:
 * Add seasonal planting windows
 * Add user progress tracking
 * Add before/after microhabitat logs
-* Add Cloud Run public demo endpoint
+* Add richer Cloud Run UI for the LLM demo
 
 ---
 
@@ -470,4 +606,4 @@ Potential next steps:
 
 **LeafStep Agent: Turning Tiny Yards into Safe Pollinator Microhabitats**
 
-LeafStep helps beginners convert a small household green space into a native, low-maintenance, pet/kid-aware, pollinator-supporting patch using an ADK-powered agent, structured tools, practical guardrails, and deployment-ready design.
+LeafStep helps beginners convert a small household green space into a low-maintenance, pet/kid-aware, pollinator-supporting patch using an ADK-powered agent, deterministic tools, practical guardrails, project-scoped skills, and Cloud Run-ready design.
