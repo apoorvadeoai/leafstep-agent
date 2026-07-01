@@ -827,3 +827,82 @@ def sustainability_guardrail_tool(
         "violations": [],
         "recommendation": "All plants and materials are verified sustainable, native/adapted, and organic-compliant for Halton Region.",
     }
+
+def leafstep_full_plan_tool(
+    location: str,
+    space_type: str,
+    sunlight: str,
+    garden_style: str,
+    safety_mode: str,
+    starter_size: str,
+) -> dict[str, Any]:
+    """Runs the complete LeafStep workflow using simple demo-safe inputs.
+
+    This wrapper is designed for ADK web demos. It avoids asking the LLM to pass
+    complex nested plant objects between tools. Python controls the safety-critical
+    workflow, and the LLM can summarize the final result.
+    """
+    intake = space_intake_tool(
+        location=location,
+        space_type=space_type,
+        sunlight=sunlight,
+        garden_style=garden_style,
+        safety_mode=safety_mode,
+        starter_size=starter_size,
+    )
+
+    recommendations = plant_recommendation_tool(
+        region=intake["region"],
+        space_type=intake["space_type"],
+        sunlight=intake["sunlight"],
+        garden_style=intake["garden_style"],
+        plant_count_target=intake["plant_count_target"],
+    )
+
+    safety = plant_safety_tool(
+        recommended_plants=recommendations["recommended_plants"],
+        safety_mode=intake["safety_mode"],
+        plant_count_target=intake["plant_count_target"],
+    )
+
+    impact = impact_tracking_tool(
+        buy_list=safety["buy_list"],
+        careful_placement_list=safety["careful_placement_list"],
+    )
+
+    soil = soil_stewardship_tool(
+        location=intake["region"],
+        space_type=intake["space_type"],
+    )
+
+    plant_names = [
+        plant.get("common_name", plant.get("name", "Unknown plant"))
+        for plant in safety["buy_list"]
+    ]
+
+    care = care_plan_tool(
+        plants=plant_names,
+        experience_level="beginner",
+    )
+
+    guardrail = sustainability_guardrail_tool(
+        proposed_plants=plant_names,
+        proposed_inputs=["organic compost", "natural mulch"],
+    )
+
+    return {
+        "intake": intake,
+        "recommendations": recommendations,
+        "safety": safety,
+        "impact": impact,
+        "soil": soil,
+        "care_plan": care,
+        "sustainability_guardrail": guardrail,
+        "recommended_plant_names": plant_names,
+        "beginner_summary": (
+            f"LeafStep created a {intake['patch_size']} {intake['garden_style']} "
+            f"plan for a {intake['space_type']} in {intake['region']}. "
+            f"It recommends {len(plant_names)} plants, applies pet/kid safety filtering, "
+            "adds impact tracking, soil guidance, a care plan, and a sustainability check."
+        ),
+    }
